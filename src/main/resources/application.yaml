@@ -1,3 +1,39 @@
 spring:
   application:
     name: common-wealth-builders
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/common-wealth
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+jackson:
+  serialization:
+    WRITE_DATES_AS_TIMESTAMPS: false
+  time-zone: Africa/Lagos
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 86400000 # 24 hours in milliseconds
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:3000
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: Authorization,Content-Type
+    allow-credentials: true
