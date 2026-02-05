@@ -39,7 +39,13 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/notices/public/**").permitAll()
+                        .requestMatchers(
+                                "/v1/auth/**",
+                                "/v1/notices/public/**",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
                         .requestMatchers("/users/**")
                         .hasAnyRole("SUPER_ADMIN", "TECH_ADMIN")
                         .requestMatchers("/payments/**")

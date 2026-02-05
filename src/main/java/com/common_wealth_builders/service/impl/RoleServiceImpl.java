@@ -2,7 +2,7 @@ package com.common_wealth_builders.service.impl;
 
 
 import com.common_wealth_builders.dto.request.AssignRoleRequest;
-import com.common_wealth_builders.dto.request.RoleRequest;
+import com.common_wealth_builders.dto.request.CreateRoleRequest;
 import com.common_wealth_builders.dto.response.GenericResponse;
 import com.common_wealth_builders.dto.response.PageResponse;
 import com.common_wealth_builders.dto.response.RoleResponse;
@@ -15,6 +15,7 @@ import com.common_wealth_builders.exception.RoleAlreadyExistsException;
 import com.common_wealth_builders.repository.RoleRepository;
 import com.common_wealth_builders.repository.UserRepository;
 import com.common_wealth_builders.repository.UserRoleRepository;
+import com.common_wealth_builders.service.AuditService;
 import com.common_wealth_builders.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +37,7 @@ public class RoleServiceImpl implements RoleService {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
-//    private final AuditService auditService;
+    private final AuditService auditService;
     
     @Override
     public GenericResponse getAllRoles(Pageable pageable) {
@@ -111,7 +112,7 @@ public class RoleServiceImpl implements RoleService {
     
     @Override
     @Transactional
-    public GenericResponse createRole(RoleRequest request) {
+    public GenericResponse createRole(CreateRoleRequest request) {
         log.info("Creating new role: name={}, displayName={}", request.getName(), request.getDisplayName());
         
         if (roleRepository.existsByName(request.getName())) {
@@ -128,13 +129,13 @@ public class RoleServiceImpl implements RoleService {
                 .build();
         
         Role savedRole = roleRepository.save(role);
-//
-//        auditService.logAction(
-//                getCurrentUserId(),
-//                "ROLE_CREATED",
-//                "ROLES",
-//                "Role created: " + savedRole.getName()
-//        );
+
+        auditService.logAction(
+                getCurrentUserId(),
+                "ROLE_CREATED",
+                "ROLES",
+                "Role created: " + savedRole.getName()
+        );
         
         log.info("Successfully created role: id={}, name={}", savedRole.getId(), savedRole.getName());
         
@@ -148,7 +149,7 @@ public class RoleServiceImpl implements RoleService {
     
     @Override
     @Transactional
-    public GenericResponse updateRole(Long id, RoleRequest request) {
+    public GenericResponse updateRole(Long id, CreateRoleRequest request) {
         log.info("Updating role: id={}, newDisplayName={}", id, request.getDisplayName());
         
         Role role = roleRepository.findById(id)

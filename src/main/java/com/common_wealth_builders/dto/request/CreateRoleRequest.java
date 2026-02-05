@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RoleRequest {
+public class CreateRoleRequest {
     
     @NotNull(message = "Role name is required")
     private RoleType name;
