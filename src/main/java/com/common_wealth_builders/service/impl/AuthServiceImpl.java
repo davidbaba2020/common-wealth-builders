@@ -5,6 +5,7 @@ import com.common_wealth_builders.dto.request.LoginRequest;
 import com.common_wealth_builders.dto.request.RegisterRequest;
 import com.common_wealth_builders.dto.response.AuthResponse;
 import com.common_wealth_builders.dto.response.GenericResponse;
+import com.common_wealth_builders.entity.Role;
 import com.common_wealth_builders.entity.User;
 import com.common_wealth_builders.enums.RoleType;
 import com.common_wealth_builders.exception.InvalidCredentialsException;
@@ -12,6 +13,7 @@ import com.common_wealth_builders.exception.ResourceNotFoundException;
 import com.common_wealth_builders.exception.UserAlreadyExistsException;
 import com.common_wealth_builders.repository.UserRepository;
 import com.common_wealth_builders.security.JwtUtil;
+import com.common_wealth_builders.service.AuditService;
 import com.common_wealth_builders.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,7 +37,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
-//    private final AuditService auditService;
+    private final AuditService auditService;
     
     @Override
     @Transactional
@@ -73,12 +76,12 @@ public class AuthServiceImpl implements AuthService {
         
         User savedUser = userRepository.save(user);
         
-//        auditService.logAction(
-//                savedUser.getId(),
-//                "USER_REGISTRATION",
-//                "AUTH",
-//                "User registered successfully: " + savedUser.getEmail()
-//        );
+        auditService.logAction(
+                savedUser.getId(),
+                "USER_REGISTRATION",
+                "AUTH",
+                "User registered successfully: " + savedUser.getEmail()
+        );
         
         String token = jwtUtil.generateToken(savedUser.getEmail());
         
@@ -101,11 +104,62 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
     
+//    @Override
+//    @Transactional
+//    public GenericResponse login(LoginRequest request) {
+//        log.info("Login attempt for email: {}", request.getEmail());
+//
+//        try {
+//            authenticationManager.authenticate(
+//                    new UsernamePasswordAuthenticationToken(
+//                            request.getEmail(),
+//                            request.getPassword()
+//                    )
+//            );
+//        } catch (Exception e) {
+//            log.error("Login failed for email: {}", request.getEmail());
+//            throw new InvalidCredentialsException("Invalid email or password");
+//        }
+//
+//        User user = userRepository.findByEmail(request.getEmail())
+//                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+//
+//        String token = jwtUtil.generateToken(user.getEmail());
+//
+//        auditService.logAction(
+//                user.getId(),
+//                "USER_LOGIN",
+//                "AUTH",
+//                "User logged in successfully"
+//        );
+//
+//        log.info("User info:::::: {}", user);
+//        log.info("User role:::::: {}", user.getUserRoles());
+//        log.info("User role:::::: {}", user.getActiveRoles());
+//
+//        AuthResponse authResponse = AuthResponse.builder()
+//                .token(token)
+//                .userId(user.getId())
+//                .email(user.getEmail())
+//                .firstname(user.getFirstname())
+//                .lastname(user.getLastname())
+////                .roles(user.getUserRoles())
+//                .build();
+//
+//        log.info("User logged in successfully: {}", user.getEmail());
+//
+//        return GenericResponse.builder()
+//                .isSuccess(true)
+//                .message("Login successful")
+//                .data(authResponse)
+//                .httpStatus(HttpStatus.OK)
+//                .build();
+//    }
     @Override
     @Transactional
     public GenericResponse login(LoginRequest request) {
         log.info("Login attempt for email: {}", request.getEmail());
-        
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -117,30 +171,42 @@ public class AuthServiceImpl implements AuthService {
             log.error("Login failed for email: {}", request.getEmail());
             throw new InvalidCredentialsException("Invalid email or password");
         }
-        
+
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
+
         String token = jwtUtil.generateToken(user.getEmail());
-        
-//        auditService.logAction(
-//                user.getId(),
-//                "USER_LOGIN",
-//                "AUTH",
-//                "User logged in successfully"
-//        );
-        
+
+        auditService.logAction(
+                user.getId(),
+                "USER_LOGIN",
+                "AUTH",
+                "User logged in successfully"
+        );
+
+        log.info("User info: id={}, email={}, name={} {}",
+                user.getId(), user.getEmail(), user.getFirstname(), user.getLastname());
+
+        log.info("Active roles: {}",
+                user.getActiveRoles().stream()
+                        .map(Role::getName)
+                        .collect(Collectors.toList())
+        );
+
         AuthResponse authResponse = AuthResponse.builder()
                 .token(token)
                 .userId(user.getId())
                 .email(user.getEmail())
                 .firstname(user.getFirstname())
                 .lastname(user.getLastname())
-//                .roles(user.getRoles())
+                .roles(user.getActiveRoles().stream()
+                        .map(role -> role.getName().name())
+                        .collect(Collectors.toList())
+                )
                 .build();
-        
+
         log.info("User logged in successfully: {}", user.getEmail());
-        
+
         return GenericResponse.builder()
                 .isSuccess(true)
                 .message("Login successful")
@@ -148,7 +214,7 @@ public class AuthServiceImpl implements AuthService {
                 .httpStatus(HttpStatus.OK)
                 .build();
     }
-    
+
     @Override
     @Transactional
     public GenericResponse changePassword(ChangePasswordRequest request, String userEmail) {
@@ -167,12 +233,12 @@ public class AuthServiceImpl implements AuthService {
         
         userRepository.save(user);
         
-//        auditService.logAction(
-//                user.getId(),
-//                "PASSWORD_CHANGED",
-//                "AUTH",
-//                "User changed password successfully"
-//        );
+        auditService.logAction(
+                user.getId(),
+                "PASSWORD_CHANGED",
+                "AUTH",
+                "User changed password successfully"
+        );
         
         log.info("Password changed successfully for user: {}", userEmail);
         
@@ -191,12 +257,12 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
         
-//        auditService.logAction(
-//                userId,
-//                "USER_DELETED",
-//                "AUTH",
-//                "User account deleted: " + user.getEmail()
-//        );
+        auditService.logAction(
+                userId,
+                "USER_DELETED",
+                "AUTH",
+                "User account deleted: " + user.getEmail()
+        );
         
         userRepository.delete(user);
         
@@ -219,13 +285,13 @@ public class AuthServiceImpl implements AuthService {
         
         // In production, generate a token and send via email
         // For now, we'll just log the action
-//
-//        auditService.logAction(
-//                user.getId(),
-//                "PASSWORD_RESET_REQUESTED",
-//                "AUTH",
-//                "Password reset requested for: " + email
-//        );
+
+        auditService.logAction(
+                user.getId(),
+                "PASSWORD_RESET_REQUESTED",
+                "AUTH",
+                "Password reset requested for: " + email
+        );
         
         log.info("Password reset email sent to: {}", email);
         

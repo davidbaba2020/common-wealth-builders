@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/v1/payments")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Payment Management", description = "Endpoints for managing payments, contributions, and payment verification")
+@Tag(name = "Payment Management", description = "Payment operations - FIN_ADMIN handles verification")
 @SecurityRequirement(name = "Bearer Authentication")
 public class PaymentController {
     
@@ -35,7 +35,7 @@ public class PaymentController {
     
     @Operation(
             summary = "Create new payment",
-            description = "Creates a new payment record for a user contribution. The payment will be in PENDING status until verified by an administrator."
+            description = "Users can create payment records for their contributions. All authenticated users can make payments."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -43,15 +43,14 @@ public class PaymentController {
                     description = "Payment created successfully",
                     content = @Content(schema = @Schema(implementation = GenericResponse.class))
             ),
-            @ApiResponse(responseCode = "400", description = "Invalid payment data or duplicate payment"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
+            @ApiResponse(responseCode = "400", description = "Invalid payment data"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_TECH_ADMIN', 'ROLE_FIN_ADMIN', 'ROLE_USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<GenericResponse> createPayment(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Payment details including amount, payment method, and reference",
+                    description = "Payment details",
                     required = true,
                     content = @Content(schema = @Schema(implementation = PaymentRequest.class))
             )
@@ -70,8 +69,8 @@ public class PaymentController {
     }
     
     @Operation(
-            summary = "Get all payments",
-            description = "Retrieves a paginated list of all payments in the system with sorting options. Only accessible by administrators."
+            summary = "Get all payments (FIN ADMIN)",
+            description = "Retrieves all payments. Only FIN_ADMIN and SUPER_ADMIN can view all payments."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -80,10 +79,10 @@ public class PaymentController {
                     content = @Content(schema = @Schema(implementation = GenericResponse.class))
             ),
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
+            @ApiResponse(responseCode = "403", description = "Forbidden - Requires FIN_ADMIN role")
     })
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_TECH_ADMIN', 'ROLE_FIN_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_FIN_ADMIN')")
     public ResponseEntity<GenericResponse> getAllPayments(
             @Parameter(description = "Page number (0-based)", example = "0")
             @RequestParam(defaultValue = "0") int page,
@@ -113,20 +112,19 @@ public class PaymentController {
     
     @Operation(
             summary = "Get payment by ID",
-            description = "Retrieves detailed information about a specific payment"
+            description = "Users can view their own payments, admins can view any payment."
     )
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Payment found and returned successfully",
+                    description = "Payment found",
                     content = @Content(schema = @Schema(implementation = GenericResponse.class))
             ),
             @ApiResponse(responseCode = "404", description = "Payment not found"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
+            @ApiResponse(responseCode = "403", description = "Cannot view other user's payment")
     })
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_TECH_ADMIN', 'ROLE_FIN_ADMIN', 'ROLE_USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<GenericResponse> getPaymentById(
             @Parameter(description = "Payment ID", example = "1", required = true)
             @PathVariable Long id) {
@@ -143,20 +141,17 @@ public class PaymentController {
     
     @Operation(
             summary = "Get user payments",
-            description = "Retrieves all payments made by a specific user"
+            description = "Get payments for a specific user. Users can only see their own, admins can see any user's payments."
     )
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "User payments retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
+                    description = "User payments retrieved successfully"
             ),
-            @ApiResponse(responseCode = "404", description = "User not found"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
+            @ApiResponse(responseCode = "403", description = "Cannot view other user's payments")
     })
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_TECH_ADMIN', 'ROLE_FIN_ADMIN', 'ROLE_USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<GenericResponse> getUserPayments(
             @Parameter(description = "User ID", example = "1", required = true)
             @PathVariable Long userId,
@@ -180,20 +175,15 @@ public class PaymentController {
     }
     
     @Operation(
-            summary = "Get pending payments",
-            description = "Retrieves all payments that are pending verification by administrators"
+            summary = "Get pending payments (FIN ADMIN)",
+            description = "Retrieves payments pending verification. Only FIN_ADMIN and SUPER_ADMIN."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Pending payments retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
+            @ApiResponse(responseCode = "200", description = "Pending payments retrieved"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - Requires FIN_ADMIN role")
     })
     @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_TECH_ADMIN', 'ROLE_FIN_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_FIN_ADMIN')")
     public ResponseEntity<GenericResponse> getPendingPayments(
             @Parameter(description = "Page number (0-based)", example = "0")
             @RequestParam(defaultValue = "0") int page,
@@ -213,19 +203,14 @@ public class PaymentController {
     }
     
     @Operation(
-            summary = "Verify payment",
-            description = "Verifies a payment after administrative review. Updates payment status to VERIFIED."
+            summary = "Verify payment (FIN ADMIN ONLY)",
+            description = "Verifies a payment after review. Only FIN_ADMIN and SUPER_ADMIN can verify payments."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Payment verified successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
+            @ApiResponse(responseCode = "200", description = "Payment verified successfully"),
             @ApiResponse(responseCode = "404", description = "Payment not found"),
-            @ApiResponse(responseCode = "400", description = "Payment already verified or in invalid state"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
+            @ApiResponse(responseCode = "400", description = "Payment already verified"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - Requires FIN_ADMIN role")
     })
     @PutMapping("/{id}/verify")
     @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_FIN_ADMIN')")
@@ -234,7 +219,7 @@ public class PaymentController {
             @PathVariable Long id,
             
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Verification details including remarks",
+                    description = "Verification details",
                     required = true,
                     content = @Content(schema = @Schema(implementation = VerifyPaymentRequest.class))
             )
@@ -253,19 +238,12 @@ public class PaymentController {
     }
     
     @Operation(
-            summary = "Reject payment",
-            description = "Rejects a payment after administrative review with specified reason. Updates payment status to REJECTED."
+            summary = "Reject payment (FIN ADMIN ONLY)",
+            description = "Rejects a payment. Only FIN_ADMIN and SUPER_ADMIN can reject payments."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Payment rejected successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
-            @ApiResponse(responseCode = "404", description = "Payment not found"),
-            @ApiResponse(responseCode = "400", description = "Payment already processed or in invalid state"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
+            @ApiResponse(responseCode = "200", description = "Payment rejected successfully"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - Requires FIN_ADMIN role")
     })
     @PutMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_FIN_ADMIN')")
@@ -274,7 +252,7 @@ public class PaymentController {
             @PathVariable Long id,
             
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Rejection details including reason",
+                    description = "Rejection details",
                     required = true,
                     content = @Content(schema = @Schema(implementation = VerifyPaymentRequest.class))
             )
@@ -294,26 +272,19 @@ public class PaymentController {
     
     @Operation(
             summary = "Cancel payment",
-            description = "Cancels a payment. Users can cancel their own pending payments, administrators can cancel any payment."
+            description = "Users can cancel their own pending payments. Admins can cancel any payment."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Payment cancelled successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
-            @ApiResponse(responseCode = "404", description = "Payment not found"),
-            @ApiResponse(responseCode = "400", description = "Payment cannot be cancelled in current state"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden - Cannot cancel another user's payment")
+            @ApiResponse(responseCode = "200", description = "Payment cancelled successfully"),
+            @ApiResponse(responseCode = "403", description = "Cannot cancel verified payments or other user's payments")
     })
     @PutMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_TECH_ADMIN', 'ROLE_FIN_ADMIN', 'ROLE_USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<GenericResponse> cancelPayment(
             @Parameter(description = "Payment ID to cancel", example = "1", required = true)
             @PathVariable Long id,
             
-            @Parameter(description = "Optional cancellation remarks", example = "Accidental duplicate payment")
+            @Parameter(description = "Optional cancellation remarks")
             @RequestParam(required = false) String remarks,
             Authentication authentication) {
         
@@ -329,39 +300,33 @@ public class PaymentController {
     }
     
     @Operation(
-            summary = "Search payments",
-            description = "Searches payments with various filters including user, status, and verification state"
+            summary = "Search payments (FIN ADMIN)",
+            description = "Search payments with filters. Only FIN_ADMIN and SUPER_ADMIN."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Search completed successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
-            @ApiResponse(responseCode = "400", description = "Invalid search parameters"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
+            @ApiResponse(responseCode = "200", description = "Search completed"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - Requires FIN_ADMIN role")
     })
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_TECH_ADMIN', 'ROLE_FIN_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_FIN_ADMIN')")
     public ResponseEntity<GenericResponse> searchPayments(
-            @Parameter(description = "User ID to filter by", example = "1")
+            @Parameter(description = "User ID filter")
             @RequestParam(required = false) Long userId,
             
-            @Parameter(description = "Payment status (PENDING, VERIFIED, REJECTED, CANCELLED)", example = "PENDING")
+            @Parameter(description = "Payment status filter")
             @RequestParam(required = false) String status,
             
-            @Parameter(description = "Verification status filter", example = "true")
+            @Parameter(description = "Verification status filter")
             @RequestParam(required = false) Boolean isVerified,
             
-            @Parameter(description = "Page number (0-based)", example = "0")
+            @Parameter(description = "Page number", example = "0")
             @RequestParam(defaultValue = "0") int page,
             
-            @Parameter(description = "Number of items per page", example = "10")
+            @Parameter(description = "Items per page", example = "10")
             @RequestParam(defaultValue = "10") int size) {
         
-        log.info("Request received: GET /payments/search - userId={}, status={}, isVerified={}, page={}, size={}", 
-                userId, status, isVerified, page, size);
+        log.info("Request received: GET /payments/search - userId={}, status={}, isVerified={}", 
+                userId, status, isVerified);
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "paymentDate"));
         GenericResponse response = paymentService.searchPayments(userId, status, isVerified, pageable);

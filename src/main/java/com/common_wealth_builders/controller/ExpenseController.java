@@ -27,15 +27,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/v1/expenses")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Expense Management", description = "Endpoints for managing organizational expenses and approvals")
+@Tag(name = "Expense Management", description = "Expense operations - FIN_ADMIN handles expenses and approvals")
 @SecurityRequirement(name = "Bearer Authentication")
 public class ExpenseController {
     
     private final ExpenseService expenseService;
     
     @Operation(
-            summary = "Create new expense",
-            description = "Creates a new expense record for the organization. Expenses require administrative approval before being finalized."
+            summary = "Create new expense (FIN ADMIN ONLY)",
+            description = "Creates expense record. Only FIN_ADMIN and SUPER_ADMIN can create expenses."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -44,22 +44,21 @@ public class ExpenseController {
                     content = @Content(schema = @Schema(implementation = GenericResponse.class))
             ),
             @ApiResponse(responseCode = "400", description = "Invalid expense data"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden - Insufficient permissions")
+            @ApiResponse(responseCode = "403", description = "Forbidden - Requires FIN_ADMIN role")
     })
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_FIN_ADMIN')")
     public ResponseEntity<GenericResponse> createExpense(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Expense details including title, amount, category, and description",
+                    description = "Expense details",
                     required = true,
                     content = @Content(schema = @Schema(implementation = ExpenseRequest.class))
             )
             @Valid @RequestBody ExpenseRequest request,
             Authentication authentication) {
         
-        log.info("Request received: POST /expenses - title={}, amount={}, category={}", 
-                request.getTitle(), request.getAmount(), request.getCategory());
+        log.info("Request received: POST /expenses - title={}, amount={}", 
+                request.getTitle(), request.getAmount());
         
         GenericResponse response = expenseService.createExpense(request, authentication.getName());
         
@@ -70,35 +69,29 @@ public class ExpenseController {
     }
     
     @Operation(
-            summary = "Get all expenses",
-            description = "Retrieves a paginated list of all expenses with sorting options. Only accessible by financial administrators."
+            summary = "Get all expenses (FIN ADMIN)",
+            description = "Retrieves all expenses. Only FIN_ADMIN and SUPER_ADMIN."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Expenses retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
+            @ApiResponse(responseCode = "200", description = "Expenses retrieved successfully"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - Requires FIN_ADMIN role")
     })
     @GetMapping
     @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_FIN_ADMIN')")
     public ResponseEntity<GenericResponse> getAllExpenses(
-            @Parameter(description = "Page number (0-based)", example = "0")
+            @Parameter(description = "Page number", example = "0")
             @RequestParam(defaultValue = "0") int page,
             
-            @Parameter(description = "Number of items per page", example = "10")
+            @Parameter(description = "Items per page", example = "10")
             @RequestParam(defaultValue = "10") int size,
             
-            @Parameter(description = "Field to sort by", example = "expenseDate")
+            @Parameter(description = "Sort field", example = "expenseDate")
             @RequestParam(defaultValue = "expenseDate") String sortBy,
             
-            @Parameter(description = "Sort direction (ASC or DESC)", example = "DESC")
+            @Parameter(description = "Sort direction", example = "DESC")
             @RequestParam(defaultValue = "DESC") String sortOrder) {
         
-        log.info("Request received: GET /expenses - page={}, size={}, sortBy={}, sortOrder={}", 
-                page, size, sortBy, sortOrder);
+        log.info("Request received: GET /expenses - page={}, size={}", page, size);
         
         Sort.Direction direction = sortOrder.equalsIgnoreCase("DESC") ? Sort.Direction.DESC : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
@@ -112,17 +105,12 @@ public class ExpenseController {
     }
     
     @Operation(
-            summary = "Get expense by ID",
-            description = "Retrieves detailed information about a specific expense"
+            summary = "Get expense by ID (FIN ADMIN)",
+            description = "Retrieves expense details. Only FIN_ADMIN and SUPER_ADMIN."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Expense found and returned successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
+            @ApiResponse(responseCode = "200", description = "Expense found"),
             @ApiResponse(responseCode = "404", description = "Expense not found"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping("/{id}")
@@ -131,35 +119,28 @@ public class ExpenseController {
             @Parameter(description = "Expense ID", example = "1", required = true)
             @PathVariable Long id) {
         
-        log.info("Request received: GET /expenses/{} - id={}", id, id);
+        log.info("Request received: GET /expenses/{}", id);
         
         GenericResponse response = expenseService.getExpenseById(id);
         
-        log.info("Response sent: GET /expenses/{} - status={}, success={}", 
-                id, response.getHttpStatus(), response.isSuccess());
+        log.info("Response sent: GET /expenses/{} - status={}", id, response.getHttpStatus());
         
         return new ResponseEntity<>(response, response.getHttpStatus());
     }
     
     @Operation(
-            summary = "Update expense",
-            description = "Updates an existing expense. Only pending expenses can be updated."
+            summary = "Update expense (FIN ADMIN)",
+            description = "Updates an existing expense. Only FIN_ADMIN and SUPER_ADMIN."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Expense updated successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
+            @ApiResponse(responseCode = "200", description = "Expense updated"),
             @ApiResponse(responseCode = "404", description = "Expense not found"),
-            @ApiResponse(responseCode = "400", description = "Invalid data or expense cannot be updated"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_FIN_ADMIN')")
     public ResponseEntity<GenericResponse> updateExpense(
-            @Parameter(description = "Expense ID to update", example = "1", required = true)
+            @Parameter(description = "Expense ID", example = "1", required = true)
             @PathVariable Long id,
             
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -170,162 +151,121 @@ public class ExpenseController {
             @Valid @RequestBody ExpenseRequest request,
             Authentication authentication) {
         
-        log.info("Request received: PUT /expenses/{} - id={}, title={}", 
-                id, id, request.getTitle());
+        log.info("Request received: PUT /expenses/{}", id);
         
         GenericResponse response = expenseService.updateExpense(id, request, authentication.getName());
         
-        log.info("Response sent: PUT /expenses/{} - status={}, success={}", 
-                id, response.getHttpStatus(), response.isSuccess());
+        log.info("Response sent: PUT /expenses/{} - status={}", id, response.getHttpStatus());
         
         return new ResponseEntity<>(response, response.getHttpStatus());
     }
     
     @Operation(
-            summary = "Delete expense",
-            description = "Permanently deletes an expense record. Only accessible by SUPER_ADMIN. This action cannot be undone."
+            summary = "Delete expense (SUPER ADMIN ONLY)",
+            description = "Permanently deletes an expense. Only SUPER_ADMIN."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Expense deleted successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
-            @ApiResponse(responseCode = "404", description = "Expense not found"),
-            @ApiResponse(responseCode = "400", description = "Expense cannot be deleted (e.g., already approved)"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "200", description = "Expense deleted"),
             @ApiResponse(responseCode = "403", description = "Forbidden - Requires SUPER_ADMIN role")
     })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ROLE_SUPER_ADMIN')")
     public ResponseEntity<GenericResponse> deleteExpense(
-            @Parameter(description = "Expense ID to delete", example = "1", required = true)
+            @Parameter(description = "Expense ID", example = "1", required = true)
             @PathVariable Long id,
             Authentication authentication) {
         
-        log.info("Request received: DELETE /expenses/{} - id={}", id, id);
+        log.info("Request received: DELETE /expenses/{}", id);
         
         GenericResponse response = expenseService.deleteExpense(id, authentication.getName());
         
-        log.info("Response sent: DELETE /expenses/{} - status={}, success={}", 
-                id, response.getHttpStatus(), response.isSuccess());
+        log.info("Response sent: DELETE /expenses/{} - status={}", id, response.getHttpStatus());
         
         return new ResponseEntity<>(response, response.getHttpStatus());
     }
     
     @Operation(
-            summary = "Approve expense",
-            description = "Approves an expense after review. Changes expense status to APPROVED and makes it final."
+            summary = "Approve expense (FIN ADMIN)",
+            description = "Approves an expense. Only FIN_ADMIN and SUPER_ADMIN."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Expense approved successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
-            @ApiResponse(responseCode = "404", description = "Expense not found"),
-            @ApiResponse(responseCode = "400", description = "Expense already approved or in invalid state"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
+            @ApiResponse(responseCode = "200", description = "Expense approved"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - Requires FIN_ADMIN role")
     })
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_FIN_ADMIN')")
     public ResponseEntity<GenericResponse> approveExpense(
-            @Parameter(description = "Expense ID to approve", example = "1", required = true)
+            @Parameter(description = "Expense ID", example = "1", required = true)
             @PathVariable Long id,
             
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Approval details including remarks",
+                    description = "Approval details",
                     required = true,
                     content = @Content(schema = @Schema(implementation = ApproveExpenseRequest.class))
             )
             @Valid @RequestBody ApproveExpenseRequest request,
             Authentication authentication) {
         
-        log.info("Request received: POST /expenses/{}/approve - id={}, approvedBy={}", 
-                id, id, authentication.getName());
+        log.info("Request received: POST /expenses/{}/approve", id);
         
         GenericResponse response = expenseService.approveExpense(id, request, authentication.getName());
         
-        log.info("Response sent: POST /expenses/{}/approve - status={}, success={}", 
-                id, response.getHttpStatus(), response.isSuccess());
+        log.info("Response sent: POST /expenses/{}/approve - status={}", id, response.getHttpStatus());
         
         return new ResponseEntity<>(response, response.getHttpStatus());
     }
     
     @Operation(
-            summary = "Get pending expenses",
-            description = "Retrieves all expenses that are pending approval"
+            summary = "Get pending expenses (FIN ADMIN)",
+            description = "Retrieves expenses pending approval. Only FIN_ADMIN and SUPER_ADMIN."
     )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Pending expenses retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
-    })
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_FIN_ADMIN')")
     public ResponseEntity<GenericResponse> getPendingExpenses(
-            @Parameter(description = "Page number (0-based)", example = "0")
+            @Parameter(description = "Page number", example = "0")
             @RequestParam(defaultValue = "0") int page,
             
-            @Parameter(description = "Number of items per page", example = "10")
+            @Parameter(description = "Items per page", example = "10")
             @RequestParam(defaultValue = "10") int size) {
         
-        log.info("Request received: GET /expenses/pending - page={}, size={}", page, size);
+        log.info("Request received: GET /expenses/pending");
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "expenseDate"));
         GenericResponse response = expenseService.getPendingExpenses(pageable);
         
-        log.info("Response sent: GET /expenses/pending - status={}, success={}", 
-                response.getHttpStatus(), response.isSuccess());
+        log.info("Response sent: GET /expenses/pending - status={}", response.getHttpStatus());
         
         return new ResponseEntity<>(response, response.getHttpStatus());
     }
     
     @Operation(
-            summary = "Search expenses",
-            description = "Searches expenses with filters for category, approval status, and text search"
+            summary = "Search expenses (FIN ADMIN)",
+            description = "Search expenses with filters. Only FIN_ADMIN and SUPER_ADMIN."
     )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Search completed successfully",
-                    content = @Content(schema = @Schema(implementation = GenericResponse.class))
-            ),
-            @ApiResponse(responseCode = "400", description = "Invalid search parameters"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden")
-    })
     @GetMapping("/search")
     @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_FIN_ADMIN')")
     public ResponseEntity<GenericResponse> searchExpenses(
-            @Parameter(description = "Expense category filter", example = "UTILITIES")
+            @Parameter(description = "Expense category")
             @RequestParam(required = false) String category,
             
-            @Parameter(description = "Approval status filter", example = "true")
+            @Parameter(description = "Approval status")
             @RequestParam(required = false) Boolean isApproved,
             
-            @Parameter(description = "Text search in title or description", example = "office")
+            @Parameter(description = "Search term")
             @RequestParam(required = false) String search,
             
-            @Parameter(description = "Page number (0-based)", example = "0")
+            @Parameter(description = "Page number", example = "0")
             @RequestParam(defaultValue = "0") int page,
             
-            @Parameter(description = "Number of items per page", example = "10")
+            @Parameter(description = "Items per page", example = "10")
             @RequestParam(defaultValue = "10") int size) {
         
-        log.info("Request received: GET /expenses/search - category={}, isApproved={}, search={}, page={}, size={}", 
-                category, isApproved, search, page, size);
+        log.info("Request received: GET /expenses/search");
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "expenseDate"));
         GenericResponse response = expenseService.searchExpenses(category, isApproved, search, pageable);
         
-        log.info("Response sent: GET /expenses/search - status={}, success={}", 
-                response.getHttpStatus(), response.isSuccess());
+        log.info("Response sent: GET /expenses/search - status={}", response.getHttpStatus());
         
         return new ResponseEntity<>(response, response.getHttpStatus());
     }

@@ -1,406 +1,850 @@
-# CommonWealth Builders - Implementation Updates
+# Commonwealth Builders Management System
 
-## Overview
-This document tracks all implementations and updates made to the CommonWealth Builders application.
+A comprehensive Spring Boot application for managing wealth-building operations including user management, payment processing, expense tracking, and financial reporting with role-based access control.
 
----
+## Table of Contents
 
-## 📋 Completed Implementations
-
-### 1. **Enums** ✅
-- `PaymentStatus` - PENDING, VERIFIED, REJECTED, CANCELLED
-- `ExpenseCategory` - OPERATIONAL, ADMINISTRATIVE, MAINTENANCE, UTILITIES, SALARY, MISCELLANEOUS, EVENT, WELFARE
-- `NoticeType` - GENERAL, URGENT, EVENT, MEETING, ANNOUNCEMENT, WARNING
-- `RoleType` - SUPER_ADMIN, TECH_ADMIN, FIN_ADMIN, USER (Already existed)
-
-### 2. **Entities** ✅
-- `Payment` - Payment tracking with verification workflow
-- `Expense` - Expense management with approval workflow
-- `Notice` - Notice board with publish/pin functionality
-- `User` - User management (Already existed, enhanced)
-- `Role` - Role management (Already existed)
-- `UserRole` - User-Role mapping (Already existed)
-- `AuditTrail` - Audit logging (Already existed)
-
-### 3. **Repositories** ✅
-- `PaymentRepository` - Payment data access with complex queries
-- `ExpenseRepository` - Expense data access with category grouping
-- `NoticeRepository` - Notice data access with public/pinned filtering
-- `UserRepository` - User data access (Already existed)
-- `RoleRepository` - Role data access (Already existed)
-- `UserRoleRepository` - UserRole data access (Already existed)
-- `AuditTrailRepository` - AuditTrail data access (Already existed)
-
-### 4. **DTOs - Request** ✅
-- `PaymentRequest` - Create payment request
-- `VerifyPaymentRequest` - Verify/Reject payment request
-- `ExpenseRequest` - Create/Update expense request
-- `ApproveExpenseRequest` - Approve expense request
-- `NoticeRequest` - Create/Update notice request
-- `ReportFilterRequest` - Report filtering request
-- `RegisterRequest` - User registration (Already existed)
-- `LoginRequest` - User login (Already existed)
-- `ChangePasswordRequest` - Password change (Already existed)
-- `ResetPasswordRequest` - Password reset (Already existed)
-- `RoleRequest` - Role management (Already existed)
-- `AssignRoleRequest` - Role assignment (Already existed)
-
-### 5. **DTOs - Response** ✅
-- `PaymentResponse` - Payment details response
-- `ExpenseResponse` - Expense details response
-- `NoticeResponse` - Notice details response
-- `AuditTrailResponse` - Audit trail details response
-- `FinancialSummaryResponse` - Financial summary report
-- `UserContributionResponse` - User contribution report
-- `AuthResponse` - Authentication response (Already existed)
-- `RoleResponse` - Role details response (Already existed)
-- `UserRoleResponse` - UserRole details response (Already existed)
-- `GenericResponse` - Generic API response (Already existed)
-- `PageResponse<T>` - Paginated response (Already existed)
-
-### 6. **Service Interfaces** ✅
-- `PaymentService` - Payment business logic interface
-- `ExpenseService` - Expense business logic interface
-- `NoticeService` - Notice business logic interface
-- `ReportService` - Reporting business logic interface
-- `AuditService` - Audit logging business logic interface
-- `UserService` - User management business logic interface
-- `AuthService` - Authentication business logic (Already existed)
-- `RoleService` - Role management business logic (Already existed)
-
-### 7. **Service Implementations** ✅
-- `PaymentServiceImpl` - Payment operations implementation
-- `ExpenseServiceImpl` - Expense operations implementation
-- `NoticeServiceImpl` - Notice operations implementation
-- `ReportServiceImpl` - Report generation implementation
-- `AuditServiceImpl` - Audit logging implementation
-- `UserServiceImpl` - User management implementation
-- `AuthServiceImpl` - Authentication implementation (Already existed)
-- `RoleServiceImpl` - Role management implementation (Already existed)
-- `CustomUserDetailsService` - Spring Security UserDetails (Already existed)
-
-### 8. **Controllers** ✅
-- `PaymentController` - Payment REST endpoints
-- `ExpenseController` - Expense REST endpoints
-- `NoticeController` - Notice REST endpoints
-- `ReportController` - Report REST endpoints
-- `AuditTrailController` - Audit trail REST endpoints
-- `UserController` - User management REST endpoints
-- `AuthController` - Authentication REST endpoints (Already existed)
-- `RoleController` - Role management REST endpoints (Already existed)
-
-### 9. **Security & Configuration** ✅
-- `SecurityConfig` - Spring Security configuration (Already existed)
-- `JwtUtil` - JWT token utilities (Already existed)
-- `JwtAuthenticationFilter` - JWT authentication filter (Already existed)
-- `DataInitializer` - Initial data setup (Already existed)
-- `AuditorAwareImpl` - JPA auditing (Commented out, can be enabled)
-- `JpaAuditingConfig` - JPA auditing configuration (Commented out, can be enabled)
-
-### 10. **Exception Handling** ✅
-- `GlobalExceptionHandler` - Centralized exception handling (Already existed)
-- Custom exceptions:
-    - `ResourceNotFoundException`
-    - `UserAlreadyExistsException`
-    - `InvalidCredentialsException`
-    - `UnauthorizedException`
-    - `PaymentAlreadyVerifiedException`
-    - `InsufficientPermissionException`
-    - `RoleAlreadyExistsException`
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [System Architecture](#system-architecture)
+- [Role-Based Access Control](#role-based-access-control)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [API Documentation](#api-documentation)
+- [Usage Examples](#usage-examples)
+- [Security](#security)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## 🔐 Security & Access Control
+## Features
 
-### Role-Based Access Control (RBAC)
-- **SUPER_ADMIN**: Full system access
-- **TECH_ADMIN**: User management, audit trails
-- **FIN_ADMIN**: Financial operations, reports
-- **USER**: Personal data, contributions
+### 🔐 Authentication & Authorization
+- JWT-based authentication
+- Role-based access control (RBAC)
+- Password encryption with BCrypt
+- Password reset functionality
+- Session management
 
-### Protected Endpoints
-- `/v1/auth/**` - Public (login, register)
-- `/v1/notices/public/**` - Public
-- `/v1/users/**` - SUPER_ADMIN, TECH_ADMIN
-- `/v1/payments/**` - SUPER_ADMIN, TECH_ADMIN, FIN_ADMIN, USER
-- `/v1/expenses/**` - SUPER_ADMIN, FIN_ADMIN
-- `/v1/audit-trails/**` - SUPER_ADMIN, TECH_ADMIN
-- `/v1/reports/**` - SUPER_ADMIN, TECH_ADMIN, FIN_ADMIN
-- `/v1/notices/**` - SUPER_ADMIN, TECH_ADMIN, FIN_ADMIN
+### 👥 User Management
+- User registration (TECH_ADMIN only)
+- User profile management
+- Account enable/disable
+- User search functionality
+- Comprehensive user tracking
+
+### 💰 Payment Management
+- Payment submission by users
+- Payment verification workflow (FIN_ADMIN)
+- Payment status tracking (PENDING, VERIFIED, REJECTED, CANCELLED)
+- Payment search and filtering
+- Payment history
+
+### 💳 Expense Management
+- Expense creation and tracking (FIN_ADMIN)
+- Expense approval workflow
+- Category-based organization
+- Expense search and reporting
+- Vendor management
+
+### 📊 Financial Reporting
+- Financial summary reports
+- User contribution reports
+- Expense reports
+- Payment reports
+- Monthly summary reports
+- PDF generation for all reports
+- Email distribution
+- WhatsApp notifications
+
+### 🔍 Audit Trail
+- Comprehensive activity logging
+- User action tracking
+- Module-based filtering
+- Searchable audit logs
+- Timestamp tracking
+
+### 🎭 Role Management
+- Dynamic role creation (SUPER_ADMIN)
+- Role assignment/revocation (TECH_ADMIN)
+- Permission management
+- Role-based endpoint access
 
 ---
 
-## 📊 Key Features Implemented
+## Technology Stack
 
-### Payment Management
-- ✅ Create payments with proof of payment
-- ✅ Verify/Reject payments (FIN_ADMIN)
-- ✅ Cancel payments
-- ✅ Payment status tracking (PENDING, VERIFIED, REJECTED, CANCELLED)
-- ✅ Payment history per user
-- ✅ Search and filter payments
+### Backend
+- **Java 17** - Programming language
+- **Spring Boot 4.0.2** - Application framework
+- **Spring Security** - Authentication & authorization
+- **Spring Data JPA** - Database operations
+- **PostgreSQL** - Primary database
+- **JWT (JJWT 0.11.5)** - Token-based authentication
+- **MapStruct 1.5.5** - DTO mapping
 
-### Expense Management
-- ✅ Create expenses with receipts
-- ✅ Approve expenses (FIN_ADMIN)
-- ✅ Expense categorization
-- ✅ Update/Delete unapproved expenses
-- ✅ Search and filter expenses
-- ✅ Expense tracking by category
+### Documentation
+- **SpringDoc OpenAPI 2.3.0** - API documentation (Swagger)
 
-### Notice Board
-- ✅ Create notices
-- ✅ Publish/Unpublish notices
-- ✅ Pin/Unpin important notices
-- ✅ Public notice viewing
-- ✅ Notice expiry dates
-- ✅ View count tracking
-- ✅ Notice attachments
+### Reporting & Communication
+- **iText7 8.0.2** - PDF generation
+- **Thymeleaf** - Email templates
+- **Spring Mail** - Email functionality
+- **Twilio SDK 9.14.1** - WhatsApp integration
 
-### Reporting
-- ✅ Financial summary reports
-- ✅ User contribution reports
-- ✅ Expense reports by category
-- ✅ Payment reports
-- ✅ Monthly reports
-- ✅ Date range filtering
+### Build & Development
+- **Maven** - Dependency management
+- **Lombok 1.18.32** - Boilerplate reduction
+- **Spring DevTools** - Development utilities
 
-### Audit Trails
-- ✅ Automatic action logging
-- ✅ User activity tracking
-- ✅ Module-based filtering
-- ✅ Search audit trails
-- ✅ IP address and user agent tracking
+---
+
+## System Architecture
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Client Layer                            │
+│  (Web Browser, Mobile App, API Consumer)                   │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  API Gateway Layer                          │
+│  - JWT Authentication Filter                                │
+│  - Rate Limiting                                            │
+│  - Request Validation                                       │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Controller Layer                           │
+│  ┌──────────────┬──────────────┬──────────────┬──────────┐ │
+│  │ Auth         │ User         │ Payment      │ Expense  │ │
+│  │ Controller   │ Controller   │ Controller   │Controller│ │
+│  ├──────────────┼──────────────┼──────────────┼──────────┤ │
+│  │ Role         │ Report       │ AuditTrail   │          │ │
+│  │ Controller   │ Controller   │ Controller   │          │ │
+│  └──────────────┴──────────────┴──────────────┴──────────┘ │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Service Layer                             │
+│  - Business Logic                                           │
+│  - Transaction Management                                   │
+│  - Data Validation                                          │
+│  - External Service Integration                             │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Repository Layer                            │
+│  - JPA Repositories                                         │
+│  - Custom Queries                                           │
+│  - Database Interactions                                    │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  PostgreSQL Database                        │
+│  - User Data                                                │
+│  - Payments & Expenses                                      │
+│  - Audit Logs                                               │
+│  - Roles & Permissions                                      │
+└─────────────────────────────────────────────────────────────┘
+
+External Services:
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│  SMTP Server │  │    Twilio    │  │  File System │
+│   (Email)    │  │  (WhatsApp)  │  │  (PDF Files) │
+└──────────────┘  └──────────────┘  └──────────────┘
+```
+
+---
+
+## Role-Based Access Control
+
+### User Roles
+
+| Role | Description | Access Level |
+|------|-------------|--------------|
+| **SUPER_ADMIN** | System administrator with full access | All operations |
+| **TECH_ADMIN** | Technical administrator | User management, roles, audit logs |
+| **FIN_ADMIN** | Financial administrator | Payments, expenses, reports |
+| **USER** | Regular system user | Own profile, create payments |
+
+### Permission Matrix
+
+| Feature | SUPER_ADMIN | TECH_ADMIN | FIN_ADMIN | USER |
+|---------|-------------|------------|-----------|------|
+| **Authentication** |
+| Login | ✅ | ✅ | ✅ | ✅ |
+| Change Own Password | ✅ | ✅ | ✅ | ✅ |
+| Reset Password | ✅ | ✅ | ✅ | ✅ |
+| **User Management** |
+| Register New User | ✅ | ✅ | ❌ | ❌ |
+| View All Users | ✅ | ✅ | ❌ | ❌ |
+| View User Details | ✅ | ✅ | ❌ | ❌ |
+| Enable/Disable User | ✅ | ✅ | ❌ | ❌ |
+| Delete User | ✅ | ❌ | ❌ | ❌ |
+| View Own Profile | ✅ | ✅ | ✅ | ✅ |
+| **Role Management** |
+| Create Role | ✅ | ❌ | ❌ | ❌ |
+| View Roles | ✅ | ✅ | ❌ | ❌ |
+| Update Role | ✅ | ❌ | ❌ | ❌ |
+| Delete Role | ✅ | ❌ | ❌ | ❌ |
+| Assign Role | ✅ | ✅ | ❌ | ❌ |
+| Revoke Role | ✅ | ✅ | ❌ | ❌ |
+| **Payment Management** |
+| Create Payment | ✅ | ✅ | ✅ | ✅ |
+| View All Payments | ✅ | ❌ | ✅ | ❌ |
+| View Own Payments | ✅ | ✅ | ✅ | ✅ |
+| Verify Payment | ✅ | ❌ | ✅ | ❌ |
+| Reject Payment | ✅ | ❌ | ✅ | ❌ |
+| Cancel Own Payment | ✅ | ✅ | ✅ | ✅ |
+| **Expense Management** |
+| Create Expense | ✅ | ❌ | ✅ | ❌ |
+| View Expenses | ✅ | ❌ | ✅ | ❌ |
+| Update Expense | ✅ | ❌ | ✅ | ❌ |
+| Delete Expense | ✅ | ❌ | ❌ | ❌ |
+| Approve Expense | ✅ | ❌ | ✅ | ❌ |
+| **Financial Reports** |
+| Generate Reports | ✅ | ❌ | ✅ | ❌ |
+| Download PDF Reports | ✅ | ❌ | ✅ | ❌ |
+| Send Email Reports | ✅ | ❌ | ✅ | ❌ |
+| Send WhatsApp Reports | ✅ | ❌ | ✅ | ❌ |
+| **Audit Trail** |
+| View Audit Logs | ✅ | ✅ | ❌ | ❌ |
+| Search Audit Logs | ✅ | ✅ | ❌ | ❌ |
+
+---
+
+## Installation
+
+### Prerequisites
+
+- Java 17 or higher
+- Maven 3.8+
+- PostgreSQL 14+
+- SMTP server credentials (for email)
+- Twilio account (for WhatsApp - optional)
+
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/davidbaba2020/common-wealth-builders.git
+cd common-wealth-builders
+```
+
+### Step 2: Database Setup
+
+Create a PostgreSQL database:
+```sql
+CREATE DATABASE commonwealth_db;
+CREATE USER commonwealth_user WITH PASSWORD 'your_secure_password';
+GRANT ALL PRIVILEGES ON DATABASE commonwealth_db TO commonwealth_user;
+```
+
+### Step 3: Configure Environment Variables
+
+Create a `.env` file in the project root or set system environment variables:
+```properties
+# Database Configuration
+DB_URL=jdbc:postgresql://localhost:5432/commonwealth_db
+DB_USERNAME=commonwealth_user
+DB_PASSWORD=your_secure_password
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-min-256-bits-long
+JWT_EXPIRATION=86400000
+
+# Email Configuration
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-gmail-app-password
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+
+# Twilio Configuration (Optional)
+TWILIO_ACCOUNT_SID=your-twilio-account-sid
+TWILIO_AUTH_TOKEN=your-twilio-auth-token
+TWILIO_WHATSAPP_NUMBER=+14155238886
+
+# Application Configuration
+SERVER_PORT=8080
+APPLICATION_NAME=Commonwealth Builders
+APPLICATION_VERSION=1.0.0
+```
+
+### Step 4: Update application.yaml
+
+Edit `src/main/resources/application.yaml`:
+```yaml
+spring:
+  application:
+    name: commonwealth-builders
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+twilio:
+  account-sid: ${TWILIO_ACCOUNT_SID:}
+  auth-token: ${TWILIO_AUTH_TOKEN:}
+  whatsapp-number: ${TWILIO_WHATSAPP_NUMBER:}
+
+application:
+  name: ${APPLICATION_NAME:Commonwealth Builders}
+  version: ${APPLICATION_VERSION:1.0.0}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+```
+
+### Step 5: Build the Project
+```bash
+mvn clean install
+```
+
+### Step 6: Run the Application
+```bash
+mvn spring-boot:run
+```
+
+Or run the JAR file:
+```bash
+java -jar target/common-wealth-builders-0.0.1-SNAPSHOT.jar
+```
+
+The application will start on `http://localhost:8080`
+
+---
+
+## Configuration
+
+### Gmail App Password Setup
+
+1. Go to your Google Account settings
+2. Enable 2-Factor Authentication
+3. Go to Security > App Passwords
+4. Generate a new app password for "Mail"
+5. Use this password in `MAIL_PASSWORD` environment variable
+
+### Twilio WhatsApp Setup
+
+1. Sign up for a Twilio account at https://www.twilio.com
+2. Get a WhatsApp-enabled phone number
+3. Configure WhatsApp sandbox or get approval for production
+4. Use your Account SID, Auth Token, and WhatsApp number in environment variables
+
+---
+
+## API Documentation
+
+### Swagger UI
+
+Once the application is running, access the interactive API documentation:
+```
+http://localhost:8080/swagger-ui.html
+```
+
+### OpenAPI JSON
+
+Access the raw OpenAPI specification:
+```
+http://localhost:8080/v3/api-docs
+```
+
+### API Base URL
+```
+http://localhost:8080/v1
+```
+
+### Authentication
+
+All protected endpoints require a JWT token in the Authorization header:
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+---
+
+## Usage Examples
+
+### 1. User Registration Flow
+
+**Step 1: TECH_ADMIN logs in**
+```bash
+curl -X POST http://localhost:8080/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "tech.admin@example.com",
+    "password": "AdminPass123!"
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": 1,
+      "email": "tech.admin@example.com",
+      "roles": ["ROLE_TECH_ADMIN"]
+    }
+  },
+  "timestamp": "2026-02-05T10:30:00Z"
+}
+```
+
+**Step 2: TECH_ADMIN registers new user**
+```bash
+curl -X POST http://localhost:8080/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -d '{
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "jane.doe@example.com",
+    "password": "SecurePass123!",
+    "phoneNumber": "+2348012345678"
+  }'
+```
+
+### 2. Payment Workflow
+
+**Step 1: User creates payment**
+```bash
+curl -X POST http://localhost:8080/v1/payments \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer USER_JWT_TOKEN" \
+  -d '{
+    "amount": 50000.00,
+    "paymentMethod": "BANK_TRANSFER",
+    "referenceNumber": "TXN123456789",
+    "description": "Monthly contribution",
+    "paymentDate": "2026-02-05T10:30:00"
+  }'
+```
+
+**Step 2: FIN_ADMIN reviews pending payments**
+```bash
+curl -X GET "http://localhost:8080/v1/payments/pending?page=0&size=10" \
+  -H "Authorization: Bearer FIN_ADMIN_JWT_TOKEN"
+```
+
+**Step 3: FIN_ADMIN verifies payment**
+```bash
+curl -X PUT http://localhost:8080/v1/payments/1/verify \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer FIN_ADMIN_JWT_TOKEN" \
+  -d '{
+    "remarks": "Payment verified successfully",
+    "verifiedAmount": 50000.00
+  }'
+```
+
+### 3. Financial Reporting
+
+**Generate and download financial summary**
+```bash
+curl -X POST http://localhost:8080/v1/reports/financial-summary/download \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer FIN_ADMIN_JWT_TOKEN" \
+  -d '{
+    "startDate": "2026-01-01T00:00:00",
+    "endDate": "2026-01-31T23:59:59"
+  }' \
+  --output financial_summary.pdf
+```
+
+**Send report via email**
+```bash
+curl -X POST http://localhost:8080/v1/reports/financial-summary/send-email \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer FIN_ADMIN_JWT_TOKEN" \
+  -d '{
+    "startDate": "2026-01-01T00:00:00",
+    "endDate": "2026-01-31T23:59:59",
+    "email": "board@example.com",
+    "recipientName": "Board of Directors",
+    "subject": "January 2026 Financial Summary"
+  }'
+```
+
+---
+
+## Security
+
+### Authentication
+- JWT tokens expire after 24 hours (configurable)
+- Passwords hashed using BCrypt (strength 12)
+- Token refresh mechanism
+
+### Authorization
+- Role-based access control (RBAC)
+- Method-level security with `@PreAuthorize`
+- Fine-grained permissions
+
+### Data Protection
+- SQL injection prevention via JPA
+- XSS protection
+- CSRF protection for state-changing operations
+- HTTPS recommended for production
+
+### Audit Logging
+- All user actions logged
+- IP address tracking
+- User agent tracking
+- Timestamp tracking
+
+---
+
+## Testing
+
+### Run All Tests
+```bash
+mvn test
+```
+
+### Run Specific Test Class
+```bash
+mvn test -Dtest=PaymentServiceTest
+```
+
+### Integration Tests
+```bash
+mvn verify
+```
+
+### Test Coverage
+```bash
+mvn jacoco:report
+```
+
+View coverage report at: `target/site/jacoco/index.html`
+
+---
+
+## Deployment
+
+### Production Build
+```bash
+mvn clean package -DskipTests
+```
+
+### Docker Deployment
+
+**Dockerfile:**
+```dockerfile
+FROM openjdk:17-jdk-slim
+VOLUME /tmp
+ARG JAR_FILE=target/*.jar
+COPY ${JAR_FILE} app.jar
+ENTRYPOINT ["java","-jar","/app.jar"]
+EXPOSE 8080
+```
+
+**Build and Run:**
+```bash
+docker build -t commonwealth-builders .
+docker run -p 8080:8080 \
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/commonwealth_db \
+  -e DB_USERNAME=commonwealth_user \
+  -e DB_PASSWORD=your_password \
+  -e JWT_SECRET=your_jwt_secret \
+  commonwealth-builders
+```
+
+### Docker Compose
+
+**docker-compose.yml:**
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: commonwealth_db
+      POSTGRES_USER: commonwealth_user
+      POSTGRES_PASSWORD: your_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/commonwealth_db
+      DB_USERNAME: commonwealth_user
+      DB_PASSWORD: your_password
+      JWT_SECRET: your_jwt_secret
+      MAIL_USERNAME: your_email@gmail.com
+      MAIL_PASSWORD: your_app_password
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+```
+
+**Run:**
+```bash
+docker-compose up -d
+```
+
+---
+
+## Project Structure
+```
+commonwealth-builders/
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/
+│   │   │       └── common_wealth_builders/
+│   │   │           ├── config/                 # Configuration classes
+│   │   │           │   ├── OpenApiConfig.java
+│   │   │           │   ├── SecurityConfig.java
+│   │   │           │   └── JpaAuditingConfig.java
+│   │   │           ├── controller/             # REST controllers
+│   │   │           │   ├── AuthController.java
+│   │   │           │   ├── UserController.java
+│   │   │           │   ├── PaymentController.java
+│   │   │           │   ├── ExpenseController.java
+│   │   │           │   ├── RoleController.java
+│   │   │           │   ├── ReportController.java
+│   │   │           │   └── AuditTrailController.java
+│   │   │           ├── dto/                    # Data Transfer Objects
+│   │   │           │   ├── request/
+│   │   │           │   └── response/
+│   │   │           ├── entity/                 # JPA entities
+│   │   │           │   ├── User.java
+│   │   │           │   ├── Payment.java
+│   │   │           │   ├── Expense.java
+│   │   │           │   ├── Role.java
+│   │   │           │   └── AuditTrail.java
+│   │   │           ├── repository/             # JPA repositories
+│   │   │           ├── service/                # Service interfaces
+│   │   │           │   └── impl/               # Service implementations
+│   │   │           ├── security/               # Security components
+│   │   │           │   ├── JwtUtil.java
+│   │   │           │   └── JwtAuthenticationFilter.java
+│   │   │           ├── exception/              # Exception handling
+│   │   │           └── enums/                  # Enum types
+│   │   └── resources/
+│   │       ├── application.yaml                # Application configuration
+│   │       └── templates/
+│   │           └── email/                      # Email templates
+│   └── test/                                   # Test classes
+├── pom.xml                                     # Maven configuration
+├── README.md                                   # This file
+├── .gitignore
+└── .env.example                                # Environment variables template
+```
+
+---
+
+## API Endpoints Summary
+
+### Authentication
+- `POST /v1/auth/login` - Login
+- `POST /v1/auth/register` - Register new user (TECH_ADMIN)
+- `POST /v1/auth/change-password` - Change password
+- `POST /v1/auth/reset-password` - Reset password
+- `DELETE /v1/auth/delete/{userId}` - Delete user (SUPER_ADMIN)
 
 ### User Management
-- ✅ User registration and login
-- ✅ Role assignment
-- ✅ User enable/disable
-- ✅ User profile management
-- ✅ Password change
-- ✅ Search users
+- `GET /v1/users` - Get all users (TECH_ADMIN)
+- `GET /v1/users/{id}` - Get user by ID (TECH_ADMIN)
+- `GET /v1/users/profile` - Get current user profile
+- `GET /v1/users/search` - Search users (TECH_ADMIN)
+- `POST /v1/users/{id}/enable` - Enable user (TECH_ADMIN)
+- `POST /v1/users/{id}/disable` - Disable user (TECH_ADMIN)
+
+### Payment Management
+- `POST /v1/payments` - Create payment
+- `GET /v1/payments` - Get all payments (FIN_ADMIN)
+- `GET /v1/payments/{id}` - Get payment by ID
+- `GET /v1/payments/user/{userId}` - Get user payments
+- `GET /v1/payments/pending` - Get pending payments (FIN_ADMIN)
+- `PUT /v1/payments/{id}/verify` - Verify payment (FIN_ADMIN)
+- `PUT /v1/payments/{id}/reject` - Reject payment (FIN_ADMIN)
+- `PUT /v1/payments/{id}/cancel` - Cancel payment
+- `GET /v1/payments/search` - Search payments (FIN_ADMIN)
+
+### Expense Management
+- `POST /v1/expenses` - Create expense (FIN_ADMIN)
+- `GET /v1/expenses` - Get all expenses (FIN_ADMIN)
+- `GET /v1/expenses/{id}` - Get expense by ID (FIN_ADMIN)
+- `PUT /v1/expenses/{id}` - Update expense (FIN_ADMIN)
+- `DELETE /v1/expenses/{id}` - Delete expense (SUPER_ADMIN)
+- `POST /v1/expenses/{id}/approve` - Approve expense (FIN_ADMIN)
+- `GET /v1/expenses/pending` - Get pending expenses (FIN_ADMIN)
+- `GET /v1/expenses/search` - Search expenses (FIN_ADMIN)
+
+### Role Management
+- `POST /v1/roles` - Create role (SUPER_ADMIN)
+- `GET /v1/roles` - Get all roles (TECH_ADMIN)
+- `GET /v1/roles/{id}` - Get role by ID (TECH_ADMIN)
+- `PUT /v1/roles/{id}` - Update role (SUPER_ADMIN)
+- `DELETE /v1/roles/{id}` - Delete role (SUPER_ADMIN)
+- `POST /v1/roles/assign` - Assign role (TECH_ADMIN)
+- `POST /v1/roles/revoke` - Revoke role (TECH_ADMIN)
+- `GET /v1/roles/user/{userId}` - Get user roles (TECH_ADMIN)
+
+### Financial Reports
+- `POST /v1/reports/financial-summary` - Generate financial summary (FIN_ADMIN)
+- `POST /v1/reports/financial-summary/download` - Download PDF (FIN_ADMIN)
+- `POST /v1/reports/financial-summary/send-email` - Send via email (FIN_ADMIN)
+- `POST /v1/reports/financial-summary/send-whatsapp` - Send via WhatsApp (FIN_ADMIN)
+- `GET /v1/reports/user-contribution/{userId}` - User contribution report (FIN_ADMIN)
+- `GET /v1/reports/user-contribution/{userId}/download` - Download PDF (FIN_ADMIN)
+- `POST /v1/reports/expenses` - Generate expense report (FIN_ADMIN)
+- `POST /v1/reports/expenses/download` - Download PDF (FIN_ADMIN)
+- `POST /v1/reports/payments` - Generate payment report (FIN_ADMIN)
+- `POST /v1/reports/payments/download` - Download PDF (FIN_ADMIN)
+- `GET /v1/reports/monthly` - Generate monthly report (FIN_ADMIN)
+
+### Audit Trail
+- `GET /v1/audit-trail` - Get all audit logs (TECH_ADMIN)
+- `GET /v1/audit-trail/user/{userId}` - Get user audit logs (TECH_ADMIN)
+- `GET /v1/audit-trail/module/{module}` - Get module audit logs (TECH_ADMIN)
+- `GET /v1/audit-trail/search` - Search audit logs (TECH_ADMIN)
 
 ---
 
-## 🔧 Configuration Required
+## Troubleshooting
 
-### Application Properties
-Add to `application.properties` or `application.yml`:
-```properties
-# JWT Configuration
-jwt.secret=your-256-bit-secret-key-here-make-it-very-long-and-secure
-jwt.expiration=86400000
+### Common Issues
 
-# Database Configuration
-spring.datasource.url=jdbc:postgresql://localhost:5432/commonwealth_db
-spring.datasource.username=your_username
-spring.datasource.password=your_password
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-
-# Server Configuration
-server.port=8080
-
-# CORS Configuration (already in SecurityConfig)
-# No additional config needed
+**1. Database Connection Error**
 ```
-
-### Optional: Enable JPA Auditing
-Uncomment the following files:
-- `AuditorAwareImpl.java`
-- `JpaAuditingConfig.java`
-
----
-
-## 📝 API Endpoints Summary
-
-### Authentication (`/v1/auth`)
-- POST `/register` - Register new user
-- POST `/login` - User login
-- POST `/change-password` - Change password
-- POST `/reset-password` - Reset password
-- DELETE `/delete/{userId}` - Delete user account
-
-### Users (`/v1/users`)
-- GET `/` - Get all users (paginated)
-- GET `/{id}` - Get user by ID
-- GET `/profile` - Get current user profile
-- GET `/search` - Search users
-- POST `/{id}/enable` - Enable user
-- POST `/{id}/disable` - Disable user
-
-### Roles (`/v1/roles`)
-- GET `/` - Get all roles (paginated)
-- GET `/active` - Get active roles
-- GET `/{id}` - Get role by ID
-- POST `/` - Create role
-- PUT `/{id}` - Update role
-- DELETE `/{id}` - Delete role
-- POST `/{id}/activate` - Activate role
-- POST `/{id}/deactivate` - Deactivate role
-- GET `/search` - Search roles
-- POST `/assign` - Assign role to user
-- DELETE `/revoke/user/{userId}/role/{roleId}` - Revoke role
-- GET `/user/{userId}` - Get user roles
-- GET `/{roleId}/users` - Get role users
-
-### Payments (`/v1/payments`)
-- POST `/` - Create payment
-- GET `/` - Get all payments (paginated)
-- GET `/{id}` - Get payment by ID
-- GET `/user/{userId}` - Get user payments
-- GET `/pending` - Get pending payments
-- PUT `/{id}/verify` - Verify payment
-- PUT `/{id}/reject` - Reject payment
-- PUT `/{id}/cancel` - Cancel payment
-- GET `/search` - Search payments
-
-### Expenses (`/v1/expenses`)
-- POST `/` - Create expense
-- GET `/` - Get all expenses (paginated)
-- GET `/{id}` - Get expense by ID
-- PUT `/{id}` - Update expense
-- DELETE `/{id}` - Delete expense
-- POST `/{id}/approve` - Approve expense
-- GET `/pending` - Get pending expenses
-- GET `/search` - Search expenses
-
-### Notices (`/v1/notices`)
-- POST `/` - Create notice
-- GET `/` - Get all notices (paginated)
-- GET `/public` - Get public notices
-- GET `/{id}` - Get notice by ID
-- PUT `/{id}` - Update notice
-- DELETE `/{id}` - Delete notice
-- POST `/{id}/publish` - Publish notice
-- POST `/{id}/unpublish` - Unpublish notice
-- POST `/{id}/pin` - Pin notice
-- POST `/{id}/unpin` - Unpin notice
-- GET `/search` - Search notices
-
-### Reports (`/v1/reports`)
-- POST `/financial-summary` - Generate financial summary
-- GET `/user-contribution/{userId}` - Generate user contribution report
-- POST `/expenses` - Generate expense report
-- POST `/payments` - Generate payment report
-- GET `/monthly?year={year}&month={month}` - Generate monthly report
-
-### Audit Trails (`/v1/audit-trails`)
-- GET `/` - Get all audit trails (paginated)
-- GET `/user/{userId}` - Get user audit trails
-- GET `/module/{module}` - Get module audit trails
-- GET `/search` - Search audit trails
-
----
-
-## 🎯 Next Steps / Future Enhancements
-
-### Suggested Improvements
-1. ✅ Email notifications for payment verification
-2. ✅ File upload for payment proofs and expense receipts
-3. ✅ Export reports to PDF/Excel
-4. ✅ Dashboard with charts and statistics
-5. ✅ Recurring expense tracking
-6. ✅ Payment reminders
-7. ✅ Bulk operations for payments
-8. ✅ Two-factor authentication
-9. ✅ API documentation with Swagger/OpenAPI
-10. ✅ Unit and integration tests
-
----
-
-## 📚 Testing Recommendations
-
-### Test Scenarios
-1. **Authentication**
-    - Register new user
-    - Login with valid credentials
-    - Login with invalid credentials
-    - Change password
-    - Reset password
-
-2. **Payment Management**
-    - Create payment as USER
-    - Verify payment as FIN_ADMIN
-    - Reject payment as FIN_ADMIN
-    - Cancel payment before verification
-    - View payment history
-
-3. **Expense Management**
-    - Create expense as FIN_ADMIN
-    - Approve expense as SUPER_ADMIN
-    - Update unapproved expense
-    - Delete unapproved expense
-    - Search expenses by category
-
-4. **Notice Board**
-    - Create notice
-    - Publish notice
-    - Pin notice
-    - View public notices
-    - Unpin and unpublish notice
-
-5. **Reports**
-    - Generate financial summary
-    - Generate user contribution report
-    - Generate monthly report
-    - Filter reports by date range
-
-6. **Audit Trails**
-    - View all audit trails
-    - Filter by user
-    - Filter by module
-    - Search audit trails
-
----
-
-## 🚀 Deployment Notes
-
-### Pre-Deployment Checklist
-- [ ] Update JWT secret to production value
-- [ ] Configure production database
-- [ ] Set up CORS for production URLs
-- [ ] Enable HTTPS
-- [ ] Set up file storage for receipts and proofs
-- [ ] Configure email service for notifications
-- [ ] Set up logging and monitoring
-- [ ] Configure backup strategy
-- [ ] Test all endpoints in staging environment
-- [ ] Update API documentation
-
-### Default Admin Account
+Error: Connection refused - could not connect to database
 ```
-Email: superadmin@commonwealth.com
-Username: superadmin
-Password: ChangeMe@123
-⚠️ CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION
+**Solution:** Verify PostgreSQL is running and credentials are correct in application.yaml
+
+**2. JWT Token Expired**
 ```
+401 Unauthorized - Token has expired
+```
+**Solution:** Login again to get a new token
+
+**3. Email Not Sending**
+```
+Error: Authentication failed
+```
+**Solution:** Use Gmail App Password instead of regular password
+
+**4. Port Already in Use**
+```
+Error: Port 8080 is already in use
+```
+**Solution:** Change port in application.yaml or kill process using port 8080
+
+**5. Maven Build Failure**
+```
+Error: Could not resolve dependencies
+```
+**Solution:** Run `mvn clean install -U` to force update dependencies
 
 ---
 
-## 📖 Documentation
+## Contributing
 
-### Entity Relationships
-- User → UserRole (One-to-Many)
-- Role → UserRole (One-to-Many)
-- User → Payment (One-to-Many)
-- User → Notice (One-to-Many, as author)
-- User → AuditTrail (One-to-Many)
-- User → Expense (Many-to-One, for approver)
+We welcome contributions! Please follow these steps:
 
-### Business Logic Summary
-1. **Payment Workflow**: Create → Pending → Verify/Reject → Verified/Rejected
-2. **Expense Workflow**: Create → Pending → Approve → Approved
-3. **Notice Workflow**: Create → Draft → Publish → Published
-4. **User Workflow**: Register → Enabled → Assign Roles → Active User
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
----
+### Coding Standards
 
-## 👥 Contributors
-- Initial Implementation: [David Baba]
-- Date: [5th February, 2026]
+- Follow Java naming conventions
+- Write unit tests for new features
+- Document public APIs with JavaDoc
+- Keep methods focused and small
+- Use meaningful variable names
 
 ---
 
-## 📞 Support
-For issues or questions, please contact the development team or raise an issue in the project repository.
+## License
+
+This project is proprietary software. All rights reserved.
+
+---
+
+## Support
+
+For support, email support@commonwealthbuilders.com or open an issue in the GitHub repository.
+
+---
+
+## Changelog
+
+### Version 1.0.0 (2026-02-05)
+- Initial release
+- User management with RBAC
+- Payment processing and verification
+- Expense management and approval
+- Financial reporting with PDF, email, and WhatsApp
+- Comprehensive audit trail
+- Swagger API documentation
+
+---
+
+## Acknowledgments
+
+- Spring Boot team for the excellent framework
+- iText for PDF generation capabilities
+- Twilio for WhatsApp integration
+- All contributors to this project
+
+---
+
+**Built with ❤️ by Commonwealth Builders Team**

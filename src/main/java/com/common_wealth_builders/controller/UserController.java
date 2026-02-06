@@ -24,15 +24,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/v1/users")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "User Management", description = "Endpoints for managing users, profiles, and user operations")
+@Tag(name = "User Management", description = "User management endpoints - TECH_ADMIN handles user operations")
 @SecurityRequirement(name = "Bearer Authentication")
 public class UserController {
     
     private final UserService userService;
     
     @Operation(
-            summary = "Get all users",
-            description = "Retrieves a paginated list of all users in the system with sorting options. Only accessible by administrators."
+            summary = "Get all users (TECH ADMIN)",
+            description = "Retrieves a paginated list of all users. Only TECH_ADMIN and SUPER_ADMIN can view all users."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -40,8 +40,8 @@ public class UserController {
                     description = "Users retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GenericResponse.class))
             ),
-            @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing JWT token"),
-            @ApiResponse(responseCode = "403", description = "Forbidden - Insufficient permissions")
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - Requires TECH_ADMIN role")
     })
     @GetMapping
     @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_TECH_ADMIN')")
@@ -73,8 +73,8 @@ public class UserController {
     }
     
     @Operation(
-            summary = "Get user by ID",
-            description = "Retrieves detailed information about a specific user by their ID"
+            summary = "Get user by ID (TECH ADMIN)",
+            description = "Retrieves detailed information about a specific user. Only TECH_ADMIN and SUPER_ADMIN."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -104,7 +104,7 @@ public class UserController {
     
     @Operation(
             summary = "Get current user profile",
-            description = "Retrieves the profile information of the currently authenticated user"
+            description = "Retrieves the profile of the currently authenticated user. Available to all logged-in users."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -112,7 +112,7 @@ public class UserController {
                     description = "Profile retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GenericResponse.class))
             ),
-            @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing JWT token")
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
     @GetMapping("/profile")
     @PreAuthorize("isAuthenticated()")
@@ -128,8 +128,8 @@ public class UserController {
     }
     
     @Operation(
-            summary = "Search users",
-            description = "Searches for users by name, email, or other criteria. Returns paginated results."
+            summary = "Search users (TECH ADMIN)",
+            description = "Searches for users by name or email. Only TECH_ADMIN and SUPER_ADMIN."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -166,8 +166,8 @@ public class UserController {
     }
     
     @Operation(
-            summary = "Enable user account",
-            description = "Enables a previously disabled user account, allowing the user to access the system"
+            summary = "Enable user account (TECH ADMIN)",
+            description = "Enables a disabled user account. Only TECH_ADMIN and SUPER_ADMIN."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -197,8 +197,8 @@ public class UserController {
     }
     
     @Operation(
-            summary = "Disable user account",
-            description = "Disables a user account, preventing the user from accessing the system until re-enabled"
+            summary = "Disable user account (TECH ADMIN)",
+            description = "Disables a user account. Only TECH_ADMIN and SUPER_ADMIN."
     )
     @ApiResponses(value = {
             @ApiResponse(

@@ -30,8 +30,8 @@ public class AuthController {
     private final AuthService authService;
     
     @Operation(
-            summary = "Register new user",
-            description = "Creates a new user account with the provided details. Returns JWT token upon successful registration."
+            summary = "Register new user (TECH ADMIN ONLY)",
+            description = "Creates a new user account. Only TECH_ADMIN can register new users. Users cannot self-register."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -40,9 +40,13 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = GenericResponse.class))
             ),
             @ApiResponse(responseCode = "400", description = "Invalid input data or email already exists"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - Only TECH_ADMIN can register users"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @SecurityRequirement(name = "Bearer Authentication")
     @PostMapping("/register")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_TECH_ADMIN')")
     public ResponseEntity<GenericResponse> register(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "User registration details",
@@ -56,7 +60,7 @@ public class AuthController {
     
     @Operation(
             summary = "User login",
-            description = "Authenticates user credentials and returns a JWT token for subsequent API calls"
+            description = "Authenticates user credentials and returns a JWT token for subsequent API calls. Available to all users."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -81,7 +85,7 @@ public class AuthController {
     
     @Operation(
             summary = "Change password",
-            description = "Allows authenticated users to change their password. Requires current password for verification."
+            description = "Allows authenticated users to change their own password. Requires current password for verification."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Password changed successfully"),
@@ -106,7 +110,7 @@ public class AuthController {
     
     @Operation(
             summary = "Request password reset",
-            description = "Initiates password reset process by sending a reset link to the user's email address"
+            description = "Initiates password reset process by sending a reset link to the user's email address. Public endpoint."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Password reset email sent successfully"),
@@ -126,14 +130,14 @@ public class AuthController {
     }
     
     @Operation(
-            summary = "Delete user account",
+            summary = "Delete user account (SUPER ADMIN ONLY)",
             description = "Permanently deletes a user account. Only accessible by SUPER_ADMIN role."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User account deleted successfully"),
             @ApiResponse(responseCode = "404", description = "User not found"),
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden - Insufficient permissions")
+            @ApiResponse(responseCode = "403", description = "Forbidden - Requires SUPER_ADMIN role")
     })
     @SecurityRequirement(name = "Bearer Authentication")
     @DeleteMapping("/delete/{userId}")

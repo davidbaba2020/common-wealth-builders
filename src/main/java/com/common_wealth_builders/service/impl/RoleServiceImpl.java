@@ -171,12 +171,12 @@ public class RoleServiceImpl implements RoleService {
         
         Role updatedRole = roleRepository.save(role);
 
-//        auditService.logAction(
-//                getCurrentUserId(),
-//                "ROLE_UPDATED",
-//                "ROLES",
-//                "Role updated: " + updatedRole.getName()
-//        );
+        auditService.logAction(
+                getCurrentUserId(),
+                "ROLE_UPDATED",
+                "ROLES",
+                "Role updated: " + updatedRole.getName()
+        );
         
         log.info("Successfully updated role: id={}, name={}", updatedRole.getId(), updatedRole.getName());
         
@@ -214,12 +214,12 @@ public class RoleServiceImpl implements RoleService {
         role.softDelete(currentUser);
         roleRepository.save(role);
         
-//        auditService.logAction(
-//                getCurrentUserId(),
-//                "ROLE_DELETED",
-//                "ROLES",
-//                "Role deleted: " + role.getName()
-//        );
+        auditService.logAction(
+                getCurrentUserId(),
+                "ROLE_DELETED",
+                "ROLES",
+                "Role deleted: " + role.getName()
+        );
         
         log.info("Successfully deleted role: id={}, name={}", id, role.getName());
         
@@ -241,12 +241,12 @@ public class RoleServiceImpl implements RoleService {
         role.activate();
         roleRepository.save(role);
         
-//        auditService.logAction(
-//                getCurrentUserId(),
-//                "ROLE_ACTIVATED",
-//                "ROLES",
-//                "Role activated: " + role.getName()
-//        );
+        auditService.logAction(
+                getCurrentUserId(),
+                "ROLE_ACTIVATED",
+                "ROLES",
+                "Role activated: " + role.getName()
+        );
         
         log.info("Successfully activated role: id={}, name={}", id, role.getName());
         
@@ -268,13 +268,13 @@ public class RoleServiceImpl implements RoleService {
         
         role.deactivate();
         roleRepository.save(role);
-//
-//        auditService.logAction(
-//                getCurrentUserId(),
-//                "ROLE_DEACTIVATED",
-//                "ROLES",
-//                "Role deactivated: " + role.getName()
-//        );
+
+        auditService.logAction(
+                getCurrentUserId(),
+                "ROLE_DEACTIVATED",
+                "ROLES",
+                "Role deactivated: " + role.getName()
+        );
         
         log.info("Successfully deactivated role: id={}, name={}", id, role.getName());
         
@@ -330,14 +330,14 @@ public class RoleServiceImpl implements RoleService {
         String currentUser = getCurrentUserEmail();
         user.assignRole(role, currentUser);
         userRepository.save(user);
-//
-//        auditService.logAction(
-//                user.getId(),
-//                "ROLE_ASSIGNED",
-//                "USER_ROLES",
-//                String.format("Role %s assigned to user %s", role.getName(), user.getEmail())
-//        );
-//
+
+        auditService.logAction(
+                user.getId(),
+                "ROLE_ASSIGNED",
+                "USER_ROLES",
+                String.format("Role %s assigned to user %s", role.getName(), user.getEmail())
+        );
+
         log.info("Successfully assigned role {} to user {}", role.getName(), user.getEmail());
         
         return GenericResponse.builder()
@@ -362,12 +362,12 @@ public class RoleServiceImpl implements RoleService {
         user.revokeRole(role, currentUser);
         userRepository.save(user);
         
-//        auditService.logAction(
-//                userId,
-//                "ROLE_REVOKED",
-//                "USER_ROLES",
-//                String.format("Role %s revoked from user %s", role.getName(), user.getEmail())
-//        );
+        auditService.logAction(
+                userId,
+                "ROLE_REVOKED",
+                "USER_ROLES",
+                String.format("Role %s revoked from user %s", role.getName(), user.getEmail())
+        );
         
         log.info("Successfully revoked role {} from user {}", role.getName(), user.getEmail());
         

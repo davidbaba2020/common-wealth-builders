@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -19,5 +20,5 @@ public class AuthResponse {
     private String email;
     private String firstname;
     private String lastname;
-    private Set<RoleType> roles;
+    private List<String> roles;
 }
