@@ -1,15 +1,8 @@
 package com.common_wealth_builders.entity;
 
 import com.common_wealth_builders.entity.base.BaseEntity;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Index;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
+import com.common_wealth_builders.enums.UserType;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +37,10 @@ public class User extends BaseEntity implements UserDetails {
     
     @Column(nullable = false, length = 100)
     private String firstname;
+
+    @Column(nullable = false, length = 100)
+    @Enumerated(EnumType.STRING)
+    private UserType userType;
     
     @Column(nullable = false, length = 100)
     private String lastname;
@@ -197,30 +194,45 @@ public class User extends BaseEntity implements UserDetails {
         this.lastLoginIp = ipAddress;
         resetFailedLoginAttempts();
     }
-    
-    public void assignRole(Role role, String assignedBy) {
-        log.info("Assigning role {} to user: {}, by: {}", role.getName(), email, assignedBy);
-        
-        boolean exists = userRoles.stream()
-                .anyMatch(ur -> ur.getRole().getId().equals(role.getId()) && ur.isActive());
-        
-        if (exists) {
-            log.warn("Role {} already assigned to user: {}", role.getName(), email);
-            throw new IllegalStateException("Role already assigned to user");
+
+    public void assignRoles(Set<Role> roles, String assignedBy) {
+
+        for (Role role : roles) {
+
+            boolean exists = userRoles.stream()
+                    .anyMatch(ur ->
+                            ur.getRole().getId().equals(role.getId()) &&
+                                    ur.isActive()
+                    );
+
+            if (exists) {
+                log.warn(
+                        "Role {} already assigned to user {} — skipping",
+                        role.getName(),
+                        email
+                );
+                continue; // 🚨 skip duplicates, don’t fail whole request
+            }
+
+            UserRole userRole = UserRole.builder()
+                    .user(this)
+                    .role(role)
+                    .assignedDate(LocalDateTime.now())
+                    .assignedBy(assignedBy)
+                    .isActive(true)
+                    .build();
+
+            userRoles.add(userRole);
+
+            log.info(
+                    "Role {} assigned to user {} by {}",
+                    role.getName(),
+                    email,
+                    assignedBy
+            );
         }
-        
-        UserRole userRole = UserRole.builder()
-                .user(this)
-                .role(role)
-                .assignedDate(LocalDateTime.now())
-                .assignedBy(assignedBy)
-                .isActive(true)
-                .build();
-        
-        userRoles.add(userRole);
-        log.info("Role {} successfully assigned to user: {}", role.getName(), email);
     }
-    
+
     public void revokeRole(Role role, String revokedBy) {
         log.info("Revoking role {} from user: {}, by: {}", role.getName(), email, revokedBy);
         

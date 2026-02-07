@@ -26,7 +26,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -315,38 +317,58 @@ public class RoleServiceImpl implements RoleService {
                 .httpStatus(HttpStatus.OK)
                 .build();
     }
-    
+
     @Override
     @Transactional
-    public GenericResponse assignRoleToUser(AssignRoleRequest request) {
-        log.info("Assigning role to user: userId={}, roleId={}", request.getUserId(), request.getRoleId());
-        
+    public GenericResponse assignRolesToUser(AssignRoleRequest request) {
+
+        log.info(
+                "Assigning roles to user: userId={}, roleIds={}",
+                request.getUserId(),
+                request.getRoleIds()
+        );
+
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        Role role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
-        
+
         String currentUser = getCurrentUserEmail();
-        user.assignRole(role, currentUser);
+
+        // 🚨 FETCH ALL ROLES AT ONCE (efficient & safe)
+        Set<Role> roles = new HashSet<>(roleRepository.findAllById(request.getRoleIds()));
+
+        if (roles.size() != request.getRoleIds().size()) {
+            throw new ResourceNotFoundException("One or more roles not found");
+        }
+
+        // 🚨 DOMAIN METHOD HANDLES DUPLICATES & AUDIT
+        user.assignRoles(roles, currentUser);
+
         userRepository.save(user);
 
         auditService.logAction(
                 user.getId(),
-                "ROLE_ASSIGNED",
+                "ROLES_ASSIGNED",
                 "USER_ROLES",
-                String.format("Role %s assigned to user %s", role.getName(), user.getEmail())
+                String.format(
+                        "Roles %s assigned to user %s",
+                        roles.stream().map(Role::getName).toList(),
+                        user.getEmail()
+                )
         );
 
-        log.info("Successfully assigned role {} to user {}", role.getName(), user.getEmail());
-        
+        log.info(
+                "Successfully assigned {} roles to user {}",
+                roles.size(),
+                user.getEmail()
+        );
+
         return GenericResponse.builder()
                 .isSuccess(true)
-                .message("Role assigned successfully")
+                .message("Roles assigned successfully")
                 .httpStatus(HttpStatus.OK)
                 .build();
     }
-    
+
     @Override
     @Transactional
     public GenericResponse revokeRoleFromUser(Long userId, Long roleId) {
