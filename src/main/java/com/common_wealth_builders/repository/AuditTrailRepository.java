@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+
 @Repository
 public interface AuditTrailRepository extends JpaRepository<AuditTrail, Long> {
     Page<AuditTrail> findByUserId(Long userId, Pageable pageable);
@@ -24,4 +26,15 @@ public interface AuditTrailRepository extends JpaRepository<AuditTrail, Long> {
         @Param("action") String action,
         Pageable pageable
     );
-}
+
+    Page<AuditTrail> findAllByCreatedDateBetween(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
+
+    @Query("""
+           SELECT a FROM AuditTrail a 
+           LEFT JOIN a.user u
+           WHERE LOWER(a.action) LIKE LOWER(CONCAT('%', :query, '%'))
+              OR LOWER(a.module) LIKE LOWER(CONCAT('%', :query, '%'))
+              OR LOWER(a.description) LIKE LOWER(CONCAT('%', :query, '%'))
+              OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))
+           """)
+    Page<AuditTrail> searchByQuery(@Param("query") String query, Pageable pageable);}

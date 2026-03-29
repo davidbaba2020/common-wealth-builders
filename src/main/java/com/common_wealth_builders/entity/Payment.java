@@ -97,12 +97,10 @@ public class Payment extends BaseEntity {
             log.error("Invalid payment amount: {}", amount);
             throw new IllegalArgumentException("Payment amount must be greater than zero");
         }
-        
         if (paymentReference == null || paymentReference.trim().isEmpty()) {
             log.error("Payment reference is required");
             throw new IllegalArgumentException("Payment reference is required");
         }
-        
         log.trace("Payment validation passed");
     }
     

@@ -18,6 +18,8 @@ import java.util.Optional;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     
     Page<Payment> findByUserId(Long userId, Pageable pageable);
+
+    List<Payment> findByUserId(Long userId);
     
     Page<Payment> findByStatus(PaymentStatus status, Pageable pageable);
     
@@ -55,4 +57,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
         @Param("isVerified") Boolean isVerified,
         Pageable pageable
     );
+
+    @Query("SELECT SUM(p.amount) FROM Payment p WHERE " +
+            "p.user.id = :userId AND p.status = :status")
+    BigDecimal sumPendingPaymentsByUserId(Long userId, PaymentStatus status);
 }

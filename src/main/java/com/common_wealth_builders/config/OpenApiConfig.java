@@ -39,36 +39,7 @@ public class OpenApiConfig {
                         .version(appVersion)
                         .description("""
                                 # Commonwealth Builders Management System API
-                                
-                                A comprehensive API for managing wealth building operations including:
-                                - User Management & Authentication
-                                - Payment Processing & Verification
-                                - Expense Management & Approval
-                                - Financial Reporting (PDF, Email, WhatsApp)
-                                - Role-based Access Control
-                                - Audit Trail Tracking
-                                
-                                ## Authentication
-                                This API uses JWT (JSON Web Tokens) for authentication. Include the token in the Authorization header:
-```
-                                Authorization: Bearer <your-token>
-```
-                                
-                                ## Roles & Permissions
-                                - **SUPER_ADMIN**: Full system access
-                                - **TECH_ADMIN**: Technical administration
-                                - **FIN_ADMIN**: Financial administration
-                                - **USER**: Standard user access
-                                
-                                ## Response Format
-                                All endpoints return a standardized response format:
-```json
-                                {
-                                  "success": true,
-                                  "message": "Operation successful",
-                                  "data": { ... },
-                                  "timestamp": "2026-02-05T10:30:00Z"
-                                }
+                           
 ```
                                 """)
                         .contact(new Contact()

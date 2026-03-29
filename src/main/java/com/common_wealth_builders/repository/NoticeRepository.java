@@ -1,6 +1,7 @@
 package com.common_wealth_builders.repository;
 
 import com.common_wealth_builders.entity.Notice;
+import com.common_wealth_builders.entity.User;
 import com.common_wealth_builders.enums.NoticeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,11 +11,26 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
-    
+
+    Page<Notice> findAllByIsDeletedFalse(Pageable pageable);
+
+    List<Notice> findByIsPublishedTrueAndIsDeletedFalse();
+
+    List<Notice> findByTitleContainingIgnoreCaseAndIsDeletedFalse(String title);
+
+    @Query("""
+    SELECT n FROM Notice n 
+    WHERE n.isDeleted = false
+    AND (LOWER(n.title) LIKE LOWER(CONCAT('%', :query, '%'))
+    OR LOWER(n.content) LIKE LOWER(CONCAT('%', :query, '%')))
+""")
+    List<Notice> search(@Param("query") String query);
+
     Page<Notice> findByType(NoticeType type, Pageable pageable);
     
     Page<Notice> findByIsPublished(boolean isPublished, Pageable pageable);
@@ -43,4 +59,6 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
         @Param("search") String search,
         Pageable pageable
     );
+
+    int countByIsPublishedTrueAndReadByUsersNotContaining(User user);
 }

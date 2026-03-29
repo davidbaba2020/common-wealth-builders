@@ -3,9 +3,9 @@ spring:
     name: common-wealth-builders
 
   datasource:
-    url: jdbc:postgresql://localhost:5433/davacomdb
+    url: jdbc:postgresql://localhost:5432/common-wealth
     username: postgres
-    password: password
+    password: 123456
     driver-class-name: org.postgresql.Driver
 
   jpa:

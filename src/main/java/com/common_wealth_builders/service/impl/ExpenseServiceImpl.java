@@ -25,14 +25,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ExpenseServiceImpl implements ExpenseService {
     
     private final ExpenseRepository expenseRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
-    
+
+    public ExpenseServiceImpl(ExpenseRepository expenseRepository, UserRepository userRepository, AuditService auditService) {
+        this.expenseRepository = expenseRepository;
+        this.userRepository = userRepository;
+        this.auditService = auditService;
+    }
+
     @Override
     @Transactional
     public GenericResponse createExpense(ExpenseRequest request, String createdBy) {

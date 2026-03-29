@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -191,7 +193,67 @@ public class AuditServiceImpl implements AuditService {
                 .httpStatus(HttpStatus.OK)
                 .build();
     }
-    
+
+    @Override
+    public GenericResponse getAuditLogsByDateRange(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
+        Page<AuditTrail> auditPage = auditTrailRepository.findAllByCreatedDateBetween(startDate, endDate, pageable);
+
+        List<AuditTrailResponse> auditResponses = auditPage.getContent().stream()
+                .map(this::mapToAuditTrailResponse)
+                .toList();
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("content", auditResponses);
+        data.put("currentPage", auditPage.getNumber());
+        data.put("totalItems", auditPage.getTotalElements());
+        data.put("totalPages", auditPage.getTotalPages());
+
+        return GenericResponse.builder()
+                .isSuccess(true)
+                .message("Audit logs retrieved successfully")
+                .data(data)
+                .httpStatus(HttpStatus.OK)
+                .build();
+    }
+
+    @Override
+    public GenericResponse getAuditLogById(Long id) {
+        AuditTrail audit = auditTrailRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Audit log not found with id: " + id));
+
+        return GenericResponse.builder()
+                .isSuccess(true)
+                .message("Audit log retrieved successfully")
+                .data(mapToAuditTrailResponse(audit))
+                .httpStatus(HttpStatus.OK)
+                .build();
+    }
+
+    @Override
+    public GenericResponse searchAuditLogs(String query, Pageable pageable) {
+        Page<AuditTrail> pageResult = auditTrailRepository.searchByQuery(query, pageable);
+
+        List<AuditTrailResponse> responses = pageResult.stream()
+                .map(this::mapToAuditTrailResponse)
+                .toList();
+
+        PageResponse<AuditTrailResponse> pageResponse = new PageResponse<>();
+        pageResponse.setContent(responses);
+        pageResponse.setPageNumber(pageResult.getNumber());
+        pageResponse.setPageNumber(pageResult.getSize());
+        pageResponse.setTotalElements(pageResult.getTotalElements());
+        pageResponse.setTotalPages(pageResult.getTotalPages());
+
+        return GenericResponse.builder()
+                .isSuccess(true)
+                .message("Audit logs retrieved successfully")
+                .data(pageResponse)
+                .httpStatus(HttpStatus.OK)
+                .build();
+    }
+
+
+
     private AuditTrailResponse mapToAuditTrailResponse(AuditTrail auditTrail) {
         return AuditTrailResponse.builder()
                 .id(auditTrail.getId())

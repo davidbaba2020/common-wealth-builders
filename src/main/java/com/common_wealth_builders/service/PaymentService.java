@@ -6,7 +6,7 @@ import com.common_wealth_builders.dto.response.GenericResponse;
 import org.springframework.data.domain.Pageable;
 
 public interface PaymentService {
-    GenericResponse createPayment(PaymentRequest request, String userEmail);
+    GenericResponse createPayment(PaymentRequest request, String name);
     GenericResponse getAllPayments(Pageable pageable);
     GenericResponse getPaymentById(Long id);
     GenericResponse getUserPayments(Long userId, Pageable pageable);

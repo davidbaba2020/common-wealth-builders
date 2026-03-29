@@ -1,5 +1,7 @@
 package com.common_wealth_builders.repository;
 
+import com.common_wealth_builders.entity.Role;
+import com.common_wealth_builders.entity.User;
 import com.common_wealth_builders.entity.UserRole;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,4 +27,6 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Long> {
     
     @Query("SELECT COUNT(ur) FROM UserRole ur WHERE ur.role.id = :roleId AND ur.isActive = true")
     Long countActiveUsersByRoleId(@Param("roleId") Long roleId);
+
+    Optional<UserRole> findByUserAndRole(User user, Role role);
 }

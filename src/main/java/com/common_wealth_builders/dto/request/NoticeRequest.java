@@ -29,8 +29,8 @@ public class NoticeRequest {
     private NoticeType type;
     
     private LocalDateTime expiryDate;
-    
-    private Boolean isPinned;
+
+    private Boolean isPinned = false;
     
     private String attachmentUrl;
 }

@@ -9,18 +9,19 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "notices", indexes = {
@@ -68,6 +69,28 @@ public class Notice extends BaseEntity {
     
     @Column(nullable = false)
     private Integer viewCount = 0;
+
+    // Track which users have read this notice
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "notice_reads",
+            joinColumns = @JoinColumn(name = "notice_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private Set<User> readByUsers = new HashSet<>();
+
+    // ✅ Mark notice as read by a user
+    public void markAsRead(User user) {
+        if (user != null) {
+            this.readByUsers.add(user);
+        }
+    }
+
+    // ✅ Check if a notice is read by a specific user
+    public boolean isReadBy(User user) {
+        return user != null && readByUsers.contains(user);
+    }
+
     
     @PrePersist
     protected void onCreate() {
@@ -138,10 +161,10 @@ public class Notice extends BaseEntity {
         if (!isPublished) {
             return false;
         }
-        
-        if (expiryDate != null && LocalDateTime.now().isAfter(expiryDate)) {
-            return false;
-        }
+
+//        if (expiryDate != null && LocalDateTime.now().isAfter(expiryDate)) {
+//            return false;
+//        }
         
         return !isDeleted();
     }

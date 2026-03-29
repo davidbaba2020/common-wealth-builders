@@ -44,7 +44,8 @@ public class SecurityConfig {
                                 "/v1/notices/public/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
-                                "/swagger-ui.html"
+                                "/swagger-ui.html",
+                                "/v1/user-notifications"
                         ).permitAll()
                         .requestMatchers("/users/**")
                         .hasAnyRole("SUPER_ADMIN", "TECH_ADMIN")
@@ -73,7 +74,7 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(
-                List.of("http://localhost:5173", "http://localhost:3000")
+                List.of("http://localhost:5173", "http://localhost:3000/")
         );
         configuration.setAllowedMethods(
                 Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")

@@ -1,5 +1,6 @@
 package com.common_wealth_builders.controller;
 
+import com.common_wealth_builders.dto.request.CreateUserRequest;
 import com.common_wealth_builders.dto.response.GenericResponse;
 import com.common_wealth_builders.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -18,7 +20,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
 @RequestMapping("/v1/users")
@@ -29,6 +37,23 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     
     private final UserService userService;
+
+    @Operation(summary = "Create a new user (Admin only)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "User created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input or user already exists"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_TECH_ADMIN')")
+    public ResponseEntity<GenericResponse> createUser(
+            @Valid @RequestBody CreateUserRequest request,
+            Authentication authentication) {
+        String creatorEmail = authentication.getName();
+        GenericResponse response = userService.createUser(request, creatorEmail);
+        return new ResponseEntity<>(response, response.getHttpStatus());
+    }
     
     @Operation(
             summary = "Get all users (TECH ADMIN)",

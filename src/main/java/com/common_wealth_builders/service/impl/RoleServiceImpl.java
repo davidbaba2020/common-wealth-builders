@@ -3,6 +3,7 @@ package com.common_wealth_builders.service.impl;
 
 import com.common_wealth_builders.dto.request.AssignRoleRequest;
 import com.common_wealth_builders.dto.request.CreateRoleRequest;
+import com.common_wealth_builders.dto.request.UserNotificationRequest;
 import com.common_wealth_builders.dto.response.GenericResponse;
 import com.common_wealth_builders.dto.response.PageResponse;
 import com.common_wealth_builders.dto.response.RoleResponse;
@@ -10,29 +11,31 @@ import com.common_wealth_builders.dto.response.UserRoleResponse;
 import com.common_wealth_builders.entity.Role;
 import com.common_wealth_builders.entity.User;
 import com.common_wealth_builders.entity.UserRole;
+import com.common_wealth_builders.enums.NotificationType;
 import com.common_wealth_builders.exception.ResourceNotFoundException;
-import com.common_wealth_builders.exception.RoleAlreadyExistsException;
 import com.common_wealth_builders.repository.RoleRepository;
 import com.common_wealth_builders.repository.UserRepository;
 import com.common_wealth_builders.repository.UserRoleRepository;
 import com.common_wealth_builders.service.AuditService;
 import com.common_wealth_builders.service.RoleService;
+import com.common_wealth_builders.service.UserNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class RoleServiceImpl implements RoleService {
     
@@ -40,35 +43,94 @@ public class RoleServiceImpl implements RoleService {
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
     private final AuditService auditService;
-    
+    private final UserNotificationService userNotificationService;
+
+    public RoleServiceImpl(RoleRepository roleRepository, UserRepository userRepository, UserRoleRepository userRoleRepository, AuditService auditService, UserNotificationService userNotificationService) {
+        this.roleRepository = roleRepository;
+        this.userRepository = userRepository;
+        this.userRoleRepository = userRoleRepository;
+        this.auditService = auditService;
+        this.userNotificationService = userNotificationService;
+    }
+
     @Override
-    public GenericResponse getAllRoles(Pageable pageable) {
-        log.info("Fetching all roles with pagination: page={}, size={}", 
-                pageable.getPageNumber(), pageable.getPageSize());
-        
-        Page<Role> rolesPage = roleRepository.findByIsDeletedFalse(pageable);
-        
-        List<RoleResponse> roleResponses = rolesPage.getContent().stream()
-                .map(this::mapToRoleResponse)
-                .collect(Collectors.toList());
-        
-        PageResponse<RoleResponse> pageResponse = PageResponse.<RoleResponse>builder()
-                .content(roleResponses)
-                .pageNumber(rolesPage.getNumber())
-                .pageSize(rolesPage.getSize())
-                .totalElements(rolesPage.getTotalElements())
-                .totalPages(rolesPage.getTotalPages())
-                .last(rolesPage.isLast())
-                .first(rolesPage.isFirst())
-                .build();
-        
-        log.info("Successfully fetched {} roles", roleResponses.size());
-        
+    public GenericResponse getAllRoles(int page, int size) {
+
+        Page<Role> roles = roleRepository.findAll(
+                PageRequest.of(page, size, Sort.by("createdDate").descending()));
+
         return GenericResponse.builder()
                 .isSuccess(true)
-                .message("Roles retrieved successfully")
-                .data(pageResponse)
+                .message("Roles fetched successfully")
                 .httpStatus(HttpStatus.OK)
+                .data(roles.map(this::mapToResponse))
+                .build();
+    }
+
+    @Override
+    public GenericResponse createRole(CreateRoleRequest request) {
+
+        if (roleRepository.existsByName(request.getName())) {
+            return new GenericResponse(false,
+                    "Role already exists",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        Role role = Role.builder()
+                .name(request.getName())
+                .displayName(request.getDisplayName())
+                .description(request.getDescription())
+                .build();
+
+        roleRepository.save(role);
+
+        return GenericResponse.builder()
+                .isSuccess(true)
+                .message("Role created successfully")
+                .httpStatus(HttpStatus.CREATED)
+                .data(mapToResponse(role))
+                .build();
+    }
+
+    @Override
+    public GenericResponse deleteRole(Long id) {
+
+        Role role = roleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
+        role.softDelete("SYSTEM");
+
+        return new GenericResponse(true,
+                "Role deleted successfully",
+                HttpStatus.OK);
+    }
+
+    @Override
+    public GenericResponse activateRole(Long id) {
+        Role role = roleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
+        role.activate();
+        return new GenericResponse(true, "Role activated", HttpStatus.OK);
+    }
+
+    @Override
+    public GenericResponse deactivateRole(Long id) {
+        Role role = roleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
+        role.deactivate();
+        return new GenericResponse(true, "Role deactivated", HttpStatus.OK);
+    }
+
+    private RoleResponse mapToResponse(Role role) {
+        return RoleResponse.builder()
+                .id(role.getId())
+                .name(role.getName())
+                .displayName(role.getDisplayName())
+                .description(role.getDescription())
+                .isActive(role.isActive())
+                .code(role.getCode())
                 .build();
     }
     
@@ -114,43 +176,6 @@ public class RoleServiceImpl implements RoleService {
     
     @Override
     @Transactional
-    public GenericResponse createRole(CreateRoleRequest request) {
-        log.info("Creating new role: name={}, displayName={}", request.getName(), request.getDisplayName());
-        
-        if (roleRepository.existsByName(request.getName())) {
-            log.error("Role already exists with name: {}", request.getName());
-            throw new RoleAlreadyExistsException("Role already exists with name: " + request.getName());
-        }
-        
-        Role role = Role.builder()
-                .name(request.getName())
-                .displayName(request.getDisplayName())
-                .description(request.getDescription())
-                .isActive(request.getIsActive() != null ? request.getIsActive() : true)
-                .isSystemRole(false)
-                .build();
-        
-        Role savedRole = roleRepository.save(role);
-
-        auditService.logAction(
-                getCurrentUserId(),
-                "ROLE_CREATED",
-                "ROLES",
-                "Role created: " + savedRole.getName()
-        );
-        
-        log.info("Successfully created role: id={}, name={}", savedRole.getId(), savedRole.getName());
-        
-        return GenericResponse.builder()
-                .isSuccess(true)
-                .message("Role created successfully")
-                .data(mapToRoleResponse(savedRole))
-                .httpStatus(HttpStatus.CREATED)
-                .build();
-    }
-    
-    @Override
-    @Transactional
     public GenericResponse updateRole(Long id, CreateRoleRequest request) {
         log.info("Updating role: id={}, newDisplayName={}", id, request.getDisplayName());
         
@@ -190,106 +215,105 @@ public class RoleServiceImpl implements RoleService {
                 .build();
     }
     
-    @Override
-    @Transactional
-    public GenericResponse deleteRole(Long id) {
-        log.info("Deleting role: id={}", id);
-        
-        Role role = roleRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.error("Role not found with ID: {}", id);
-                    return new ResourceNotFoundException("Role not found with ID: " + id);
-                });
-        
-        if (role.isSystemRole()) {
-            log.warn("Attempt to delete system role blocked: id={}, name={}", id, role.getName());
-            throw new IllegalStateException("Cannot delete system role");
-        }
-        
-        Long usersWithRole = userRoleRepository.countActiveUsersByRoleId(id);
-        if (usersWithRole > 0) {
-            log.warn("Cannot delete role with active users: roleId={}, userCount={}", id, usersWithRole);
-            throw new IllegalStateException("Cannot delete role assigned to " + usersWithRole + " users");
-        }
-        
-        String currentUser = getCurrentUserEmail();
-        role.softDelete(currentUser);
-        roleRepository.save(role);
-        
-        auditService.logAction(
-                getCurrentUserId(),
-                "ROLE_DELETED",
-                "ROLES",
-                "Role deleted: " + role.getName()
-        );
-        
-        log.info("Successfully deleted role: id={}, name={}", id, role.getName());
-        
-        return GenericResponse.builder()
-                .isSuccess(true)
-                .message("Role deleted successfully")
-                .httpStatus(HttpStatus.OK)
-                .build();
-    }
-    
-    @Override
-    @Transactional
-    public GenericResponse activateRole(Long id) {
-        log.info("Activating role: id={}", id);
-        
-        Role role = roleRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Role not found with ID: " + id));
-        
-        role.activate();
-        roleRepository.save(role);
-        
-        auditService.logAction(
-                getCurrentUserId(),
-                "ROLE_ACTIVATED",
-                "ROLES",
-                "Role activated: " + role.getName()
-        );
-        
-        log.info("Successfully activated role: id={}, name={}", id, role.getName());
-        
-        return GenericResponse.builder()
-                .isSuccess(true)
-                .message("Role activated successfully")
-                .data(mapToRoleResponse(role))
-                .httpStatus(HttpStatus.OK)
-                .build();
-    }
-    
-    @Override
-    @Transactional
-    public GenericResponse deactivateRole(Long id) {
-        log.info("Deactivating role: id={}", id);
-        
-        Role role = roleRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Role not found with ID: " + id));
-        
-        role.deactivate();
-        roleRepository.save(role);
-
-        auditService.logAction(
-                getCurrentUserId(),
-                "ROLE_DEACTIVATED",
-                "ROLES",
-                "Role deactivated: " + role.getName()
-        );
-        
-        log.info("Successfully deactivated role: id={}, name={}", id, role.getName());
-        
-        return GenericResponse.builder()
-                .isSuccess(true)
-                .message("Role deactivated successfully")
-                .data(mapToRoleResponse(role))
-                .httpStatus(HttpStatus.OK)
-                .build();
-    }
-    
-    @Override
-    public GenericResponse searchRoles(String search, Pageable pageable) {
+//    @Override
+//    @Transactional
+//    public GenericResponse deleteRole(Long id) {
+//        log.info("Deleting role: id={}", id);
+//
+//        Role role = roleRepository.findById(id)
+//                .orElseThrow(() -> {
+//                    log.error("Role not found with ID: {}", id);
+//                    return new ResourceNotFoundException("Role not found with ID: " + id);
+//                });
+//
+//        if (role.isSystemRole()) {
+//            log.warn("Attempt to delete system role blocked: id={}, name={}", id, role.getName());
+//            throw new IllegalStateException("Cannot delete system role");
+//        }
+//
+//        Long usersWithRole = userRoleRepository.countActiveUsersByRoleId(id);
+//        if (usersWithRole > 0) {
+//            log.warn("Cannot delete role with active users: roleId={}, userCount={}", id, usersWithRole);
+//            throw new IllegalStateException("Cannot delete role assigned to " + usersWithRole + " users");
+//        }
+//
+//        String currentUser = getCurrentUserEmail();
+//        role.softDelete(currentUser);
+//        roleRepository.save(role);
+//
+////        auditService.logAction(
+////                getCurrentUserId(),
+////                "ROLE_DELETED",
+////                "ROLES",
+////                "Role deleted: " + role.getName()
+////        );
+//
+//        log.info("Successfully deleted role: id={}, name={}", id, role.getName());
+//
+//        return GenericResponse.builder()
+//                .isSuccess(true)
+//                .message("Role deleted successfully")
+//                .httpStatus(HttpStatus.OK)
+//                .build();
+//    }
+//
+//    @Override
+//    @Transactional
+//    public GenericResponse activateRole(Long id) {
+//        log.info("Activating role: id={}", id);
+//
+//        Role role = roleRepository.findById(id)
+//                .orElseThrow(() -> new ResourceNotFoundException("Role not found with ID: " + id));
+//
+//        role.activate();
+//        roleRepository.save(role);
+//
+////        auditService.logAction(
+////                getCurrentUserId(),
+////                "ROLE_ACTIVATED",
+////                "ROLES",
+////                "Role activated: " + role.getName()
+////        );
+//
+//        log.info("Successfully activated role: id={}, name={}", id, role.getName());
+//
+//        return GenericResponse.builder()
+//                .isSuccess(true)
+//                .message("Role activated successfully")
+//                .data(mapToRoleResponse(role))
+//                .httpStatus(HttpStatus.OK)
+//                .build();
+//    }
+//
+//    @Override
+//    @Transactional
+//    public GenericResponse deactivateRole(Long id) {
+//        log.info("Deactivating role: id={}", id);
+//
+//        Role role = roleRepository.findById(id)
+//                .orElseThrow(() -> new ResourceNotFoundException("Role not found with ID: " + id));
+//
+//        role.deactivate();
+//        roleRepository.save(role);
+////
+////        auditService.logAction(
+////                getCurrentUserId(),
+////                "ROLE_DEACTIVATED",
+////                "ROLES",
+////                "Role deactivated: " + role.getName()
+////        );
+//
+//        log.info("Successfully deactivated role: id={}, name={}", id, role.getName());
+//
+//        return GenericResponse.builder()
+//                .isSuccess(true)
+//                .message("Role deactivated successfully")
+//                .data(mapToRoleResponse(role))
+//                .httpStatus(HttpStatus.OK)
+//                .build();
+//    }
+@Override
+public GenericResponse searchRoles(String search, Pageable pageable) {
         log.info("Searching roles with term: {}", search);
         
         Page<Role> rolesPage = roleRepository.searchRoles(search, pageable);
@@ -318,59 +342,70 @@ public class RoleServiceImpl implements RoleService {
                 .build();
     }
 
-    @Override
     @Transactional
-    public GenericResponse assignRolesToUser(AssignRoleRequest request) {
-
-        log.info(
-                "Assigning roles to user: userId={}, roleIds={}",
-                request.getUserId(),
-                request.getRoleIds()
-        );
+    @Override
+    public GenericResponse assignRoleToUser(AssignRoleRequest request) {
+        log.info("Assigning role to user: userId={}, roleId={}", request.getUserId(), request.getRoleId());
 
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        Role role = roleRepository.findById(request.getRoleId())
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
 
         String currentUser = getCurrentUserEmail();
 
-        // 🚨 FETCH ALL ROLES AT ONCE (efficient & safe)
-        Set<Role> roles = new HashSet<>(roleRepository.findAllById(request.getRoleIds()));
-
-        if (roles.size() != request.getRoleIds().size()) {
-            throw new ResourceNotFoundException("One or more roles not found");
+        Optional<UserRole> existingUserRole = userRoleRepository.findByUserAndRole(user, role);
+        if (existingUserRole.isPresent()) {
+            UserRole userRole = existingUserRole.get();
+            if (userRole.isActive()) {
+                throw new IllegalStateException("Role already assigned to user");
+            }
+            // Reactivate
+            userRole.setActive(true);
+            userRole.setAssignedDate(LocalDateTime.now());
+            userRole.setAssignedBy(currentUser);
+            userRole.setRemarks(request.getRemarks());
+            userRole.setRevokedDate(null);
+            userRole.setRevokedBy(null);
+            // No need to save explicitly, will be updated at flush
+            log.info("Reactivated role {} for user {}", role.getName(), user.getEmail());
+        } else {
+            // Create new
+            UserRole newUserRole = UserRole.builder()
+                    .user(user)
+                    .role(role)
+                    .assignedDate(LocalDateTime.now())
+                    .assignedBy(currentUser)
+                    .remarks(request.getRemarks())
+                    .isActive(true)
+                    .build();
+            userRoleRepository.save(newUserRole);
+            // Also add to user's set to keep in-memory consistent (optional)
+            user.getUserRoles().add(newUserRole);
+            log.info("Assigned new role {} to user {}", role.getName(), user.getEmail());
         }
-
-        // 🚨 DOMAIN METHOD HANDLES DUPLICATES & AUDIT
-        user.assignRoles(roles, currentUser);
-
-        userRepository.save(user);
 
         auditService.logAction(
                 user.getId(),
-                "ROLES_ASSIGNED",
+                "ROLE_ASSIGNED",
                 "USER_ROLES",
-                String.format(
-                        "Roles %s assigned to user %s",
-                        roles.stream().map(Role::getName).toList(),
-                        user.getEmail()
-                )
+                String.format("Role %s assigned to user %s", role.getName(), user.getEmail())
         );
-
-        log.info(
-                "Successfully assigned {} roles to user {}",
-                roles.size(),
-                user.getEmail()
-        );
-
+        userNotificationService.createNotification(UserNotificationRequest.builder()
+                .userId(user.getId())
+                .title("Role assigned")
+                .content("You have been assigned " + role.getName() + "...")
+                .type(NotificationType.ROLE_ASSIGNED)
+                .build());
         return GenericResponse.builder()
                 .isSuccess(true)
-                .message("Roles assigned successfully")
+                .message("Role assigned successfully")
                 .httpStatus(HttpStatus.OK)
                 .build();
     }
-
-    @Override
+    
     @Transactional
+    @Override
     public GenericResponse revokeRoleFromUser(Long userId, Long roleId) {
         log.info("Revoking role from user: userId={}, roleId={}", userId, roleId);
         
@@ -392,7 +427,12 @@ public class RoleServiceImpl implements RoleService {
         );
         
         log.info("Successfully revoked role {} from user {}", role.getName(), user.getEmail());
-        
+        userNotificationService.createNotification(UserNotificationRequest.builder()
+                .userId(user.getId())
+                .title("Role revoked")
+                .content("Your role as " + role.getName() + "has been removed...")
+                .type(NotificationType.ROLE_REMOVED)
+                .build());
         return GenericResponse.builder()
                 .isSuccess(true)
                 .message("Role revoked successfully")

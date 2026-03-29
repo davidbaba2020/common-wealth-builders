@@ -6,6 +6,7 @@ import com.common_wealth_builders.dto.response.GenericResponse;
 import com.common_wealth_builders.dto.response.UserContributionResponse;
 import com.common_wealth_builders.entity.Payment;
 import com.common_wealth_builders.entity.User;
+import com.common_wealth_builders.enums.PaymentStatus;
 import com.common_wealth_builders.exception.ResourceNotFoundException;
 import com.common_wealth_builders.repository.ExpenseRepository;
 import com.common_wealth_builders.repository.PaymentRepository;
@@ -99,11 +100,14 @@ public class ReportServiceImpl implements ReportService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
-        BigDecimal totalContributions = paymentRepository.sumVerifiedPaymentsByUserId(userId);
-        totalContributions = totalContributions != null ? totalContributions : BigDecimal.ZERO;
+        BigDecimal verifiedContributions = paymentRepository.sumVerifiedPaymentsByUserId(userId);
+        verifiedContributions = verifiedContributions != null ? verifiedContributions : BigDecimal.ZERO;
+
+        BigDecimal pendingContributions = paymentRepository.sumPendingPaymentsByUserId(userId, PaymentStatus.PENDING);;
+        pendingContributions = pendingContributions != null ? pendingContributions : BigDecimal.ZERO;
         
-        List<Payment> userPayments = paymentRepository.findByUserIdAndIsVerifiedTrue(userId);
-        BigDecimal verifiedContributions = userPayments.stream()
+        List<Payment> userPayments = paymentRepository.findByUserId(userId);
+        BigDecimal totalContributions = userPayments.stream()
                 .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
@@ -123,7 +127,7 @@ public class ReportServiceImpl implements ReportService {
                 .userFullName(user.getFirstname() + " " + user.getLastname())
                 .totalContributions(totalContributions)
                 .verifiedContributions(verifiedContributions)
-                .pendingContributions(BigDecimal.ZERO)
+                .pendingContributions(pendingContributions)
                 .paymentCount(userPayments.size())
                 .lastPaymentDate(lastPaymentDate)
                 .firstPaymentDate(firstPaymentDate)

@@ -55,10 +55,10 @@ public class User extends BaseEntity implements UserDetails {
     private String phoneNumber;
     
     @Column(length = 100)
-    private String remitanceBankName;
+    private String remittanceBankName;
     
     @Column(length = 20)
-    private String remitanceAccNumber;
+    private String remittanceAccNumber;
     
     @Column(nullable = false, unique = true, length = 50)
     private String userName;
